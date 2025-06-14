@@ -1,0 +1,22 @@
+[
+  {"name":"홍길동","age":"75세","height":"165cm","weight":"60kg","location":"서울 은평구"},
+  {"name":"김영희","age":"80세","height":"158cm","weight":"55kg","location":"서울 종로구"},
+  {"name":"박철수","age":"78세","height":"172cm","weight":"68kg","location":"서울 강북구"},
+  {"name":"이영수","age":"77세","height":"160cm","weight":"62kg","location":"서울 마포구"},
+  {"name":"최지연","age":"82세","height":"155cm","weight":"50kg","location":"서울 동작구"},
+  {"name":"한상훈","age":"79세","height":"170cm","weight":"70kg","location":"서울 강남구"},
+  {"name":"정미선","age":"74세","height":"162cm","weight":"58kg","location":"서울 서초구"},
+  {"name":"이준호","age":"76세","height":"168cm","weight":"65kg","location":"서울 송파구"},
+  {"name":"김민지","age":"81세","height":"157cm","weight":"54kg","location":"서울 강서구"},
+  {"name":"박지훈","age":"78세","height":"171cm","weight":"67kg","location":"서울 광진구"},
+  {"name":"최수진","age":"75세","height":"160cm","weight":"60kg","location":"서울 관악구"},
+  {"name":"윤동현","age":"83세","height":"169cm","weight":"66kg","location":"서울 용산구"},
+  {"name":"강민서","age":"80세","height":"158cm","weight":"55kg","location":"서울 성동구"},
+  {"name":"임재현","age":"77세","height":"167cm","weight":"63kg","location":"서울 노원구"},
+  {"name":"신지훈","age":"79세","height":"172cm","weight":"68kg","location":"서울 동대문구"},
+  {"name":"서연희","age":"76세","height":"159cm","weight":"52kg","location":"서울 중랑구"},
+  {"name":"오승민","age":"74세","height":"165cm","weight":"60kg","location":"서울 강북구"},
+  {"name":"홍재원","age":"81세","height":"163cm","weight":"57kg","location":"서울 은평구"},
+  {"name":"박서윤","age":"78세","height":"170cm","weight":"65kg","location":"서울 종로구"},
+  {"name":"김지훈","age":"80세","height":"168cm","weight":"64kg","location":"서울 강남구"}
+]
