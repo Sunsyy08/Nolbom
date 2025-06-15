@@ -18,7 +18,11 @@ fun MiniMapView(modifier: Modifier = Modifier) {
 
     GoogleMap(
         modifier = modifier,
-        cameraPositionState = cameraPositionState
+        cameraPositionState = cameraPositionState,
+        uiSettings = com.google.maps.android.compose.MapUiSettings(
+            zoomControlsEnabled = false // ✅ 줌 버튼 비활성화
+        )
+
     ) {
         Marker(
             state = MarkerState(position = seoul),

@@ -56,7 +56,7 @@ fun loadUsersFromAssets(context: Context): List<AlertUser> {
 }
 
 @Composable
-fun MainScreen() {
+fun MainScreen(onNavigateToAlertList: () -> Unit) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
@@ -120,7 +120,7 @@ fun MainScreen() {
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        ActionCardSection()
+        ActionCardSection(onNavigateToAlertList)
         Spacer(modifier = Modifier.weight(1f)) // 내용 밀어올림
         BottomTabBar()
         // 여기에 버튼 등 추가 가능
@@ -215,7 +215,7 @@ fun AlertCardSmall(user: AlertUser) {
 }
 
 @Composable
-fun ActionCardSection() {
+fun ActionCardSection(onNavigateToAlertList: () -> Unit) {
     // Row 전체를 감싸는 카드 배경
     Card(
         modifier = Modifier
@@ -246,7 +246,7 @@ fun ActionCardSection() {
             ActionCard(
                 title = "안내 문자",
                 icon = Icons.Default.MailOutline,
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp).clickable { onNavigateToAlertList() }
             )
         }
     }
