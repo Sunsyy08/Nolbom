@@ -13,9 +13,13 @@ fun NolbomNavHost(navController: NavHostController) {
             StartScreen(navController = navController)
         }
 
-//        composable(Screen.SignUp.route) {
-//            SignUpScreen(navController = navController) // ← 필요 시 파라미터 맞춰주세요
-//        }
+        composable(Screen.SignUp.route) {
+            SignUpScreen(navController = navController) // ← 필요 시 파라미터 맞춰주세요
+        }
+        composable(Screen.SignUpExtra.route) {
+            SignUpExtraScreen(navController = navController)
+        }
+
 
         composable(Screen.Main.route) {
             MainScreen(
