@@ -7,7 +7,16 @@ import androidx.navigation.compose.composable
 
 @Composable
 fun NolbomNavHost(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Screen.Main.route) {
+    NavHost(navController = navController, startDestination = Screen.Start.route) {
+
+        composable(Screen.Start.route) {
+            StartScreen(navController = navController)
+        }
+
+//        composable(Screen.SignUp.route) {
+//            SignUpScreen(navController = navController) // ← 필요 시 파라미터 맞춰주세요
+//        }
+
         composable(Screen.Main.route) {
             MainScreen(
                 onNavigateToAlertList = {
