@@ -153,7 +153,7 @@ fun SignUpExtraScreen(navController: NavController) {
             // 로그인 버튼
             Button(
                 onClick = {
-                    navController.navigate("login")
+                    navController.navigate(Screen.WardSignup.route)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5)),
                 shape = RoundedCornerShape(16.dp),
@@ -162,7 +162,7 @@ fun SignUpExtraScreen(navController: NavController) {
                     .height(80.dp)
                     .padding(top = 20.dp)
             ) {
-                Text("로그인", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("다음", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }

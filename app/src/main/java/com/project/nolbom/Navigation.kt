@@ -19,7 +19,9 @@ fun NolbomNavHost(navController: NavHostController) {
         composable(Screen.SignUpExtra.route) {
             SignUpExtraScreen(navController = navController)
         }
-
+        composable(Screen.WardSignup.route){
+            WardSignupScreen(navController = navController)
+        }
 
         composable(Screen.Main.route) {
             MainScreen(
