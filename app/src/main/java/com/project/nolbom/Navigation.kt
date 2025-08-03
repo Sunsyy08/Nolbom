@@ -22,6 +22,9 @@ fun NolbomNavHost(navController: NavHostController) {
         composable(Screen.WardSignup.route){
             WardSignupScreen(navController = navController)
         }
+        composable(Screen.GuardianSignup.route){
+            GuardianSignupScreen(navController = navController)
+        }
 
         composable(Screen.Main.route) {
             MainScreen(
