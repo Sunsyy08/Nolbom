@@ -147,7 +147,9 @@ fun WardSignupScreen(
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Button(
-                    onClick = { /* 가입 완료 처리 */ },
+                    onClick = {
+                        navController.navigate(Screen.Main.route)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -32,12 +34,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.compose.material3.*
+import androidx.compose.ui.text.input.VisualTransformation
+
 
 @Composable
 fun SignUpScreen(navController: NavController) {
     var name by remember { mutableStateOf("") }
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    // 에러 다이얼로그용 상태
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -47,7 +56,6 @@ fun SignUpScreen(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // 제목
         Text(
             text = "회원가입",
             fontSize = 28.sp,
@@ -67,7 +75,7 @@ fun SignUpScreen(navController: NavController) {
             onValueChange = { name = it },
             label = { Text("이름") },
             leadingIcon = {
-                Icon(Icons.Default.AccountCircle, contentDescription = "이름 아이콘", tint = Color(0xFF4CAF50))
+                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = Color(0xFF4CAF50))
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -85,7 +93,7 @@ fun SignUpScreen(navController: NavController) {
             onValueChange = { userId = it },
             label = { Text("아이디") },
             leadingIcon = {
-                Icon(Icons.Default.Person, contentDescription = "아이디 아이콘", tint = Color(0xFF4CAF50))
+                Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF4CAF50))
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -97,15 +105,25 @@ fun SignUpScreen(navController: NavController) {
             )
         )
 
-        // 비밀번호 입력
+        // 비밀번호 입력란 (눈 아이콘으로 토글)
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("비밀번호 확인") },
+            label = { Text("비밀번호") },
             leadingIcon = {
-                Icon(Icons.Default.Lock, contentDescription = "비밀번호 아이콘", tint = Color(0xFF4CAF50))
+                Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF4CAF50))
             },
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) VisualTransformation.None
+            else PasswordVisualTransformation(mask = '*'),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = null,
+                        tint = Color.Gray
+                    )
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp),
@@ -119,7 +137,24 @@ fun SignUpScreen(navController: NavController) {
         // 가입하기 버튼
         Button(
             onClick = {
-                navController.navigate(Screen.SignUpExtra.route)
+                // 입력 검사
+                when {
+                    name.isBlank() -> {
+                        errorMessage = "이름을 입력해주세요"
+                        showErrorDialog = true
+                    }
+                    userId.isBlank() -> {
+                        errorMessage = "아이디를 입력해주세요"
+                        showErrorDialog = true
+                    }
+                    password.isBlank() -> {
+                        errorMessage = "비밀번호를 입력해주세요"
+                        showErrorDialog = true
+                    }
+                    else -> {
+                        navController.navigate(Screen.SignUpExtra.route)
+                    }
+                }
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5)),
             shape = RoundedCornerShape(16.dp),
@@ -131,4 +166,19 @@ fun SignUpScreen(navController: NavController) {
             Text("가입하기", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
+
+    // 에러 다이얼로그
+    if (showErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text("입력 오류") },
+            text = { Text(errorMessage) },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
+                    Text("확인")
+                }
+            }
+        )
+    }
 }
+
