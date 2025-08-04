@@ -1,7 +1,9 @@
 package com.project.nolbom
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,29 +16,52 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.navigation.NavController
 
 @Composable
 fun WardSignupScreen(
     navController: NavController
 ) {
-    val profileImage   = painterResource(id = R.drawable.ward_profile)
-    var height         by remember { mutableStateOf("") }
-    var weight         by remember { mutableStateOf("") }
-    var medicalStatus  by remember { mutableStateOf("") }
-    var homeAddress    by remember { mutableStateOf("") }
+    val profilePlaceholder = painterResource(id = R.drawable.ward_profile)
+    var profileBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var height by remember { mutableStateOf("") }
+    var weight by remember { mutableStateOf("") }
+    var medicalStatus by remember { mutableStateOf("") }
+    var homeAddress by remember { mutableStateOf("") }
+
+    // 카메라 론처
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) profileBitmap = bitmap
+    }
+    val focusManager = LocalFocusManager.current
+    val weightRequester = remember { FocusRequester() }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
     ) {
-        // 상단 헤더: 이미지 + 머릿글
+        // 상단 헤더
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -52,22 +77,42 @@ fun WardSignupScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
+                // 프로필 이미지와 카메라 버튼
                 Box(
                     modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
+                        .size(120.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        painter = profileImage,
-                        contentDescription = "프로필 이미지",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    // 원형 프로필 이미지
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .clickable { cameraLauncher.launch(null) }
+                    ) {
+                        if (profileBitmap != null) {
+                            Image(
+                                bitmap = profileBitmap!!.asImageBitmap(),
+                                contentDescription = "프로필 이미지",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Image(
+                                painter = profilePlaceholder,
+                                contentDescription = "프로필 기본 이미지",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                    // 카메라 버튼: 프로필 원 위에 겹쳐 표시
                     IconButton(
-                        onClick = { /* 카메라 열기 */ },
+                        onClick = { cameraLauncher.launch(null) },
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
+                            .offset(x = 8.dp, y = 8.dp)
                             .size(32.dp)
                             .background(Color.White, CircleShape)
                     ) {
@@ -78,6 +123,7 @@ fun WardSignupScreen(
                         )
                     }
                 }
+
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "환영합니다!",
@@ -93,7 +139,7 @@ fun WardSignupScreen(
             }
         }
 
-        // 하단 폼 섹션: 카드 스타일
+        // 하단 폼 섹션
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -108,25 +154,16 @@ fun WardSignupScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
-                    value = height,
-                    onValueChange = { height = it },
-                    label = { Text("키 (cm)") },
+                    value = homeAddress,
+                    onValueChange = { homeAddress = it },
+                    label = { Text("집 주소") },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(60.dp)
                 )
-                OutlinedTextField(
-                    value = weight,
-                    onValueChange = { weight = it },
-                    label = { Text("몸무게 (kg)") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                )
+
                 OutlinedTextField(
                     value = medicalStatus,
                     onValueChange = { medicalStatus = it },
@@ -134,22 +171,60 @@ fun WardSignupScreen(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(60.dp)
                 )
-                OutlinedTextField(
-                    value = homeAddress,
-                    onValueChange = { homeAddress = it },
-                    label = { Text("집 주소") },
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                )
-                Spacer(modifier = Modifier.weight(1f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedTextField(
+                        value = height,
+                        onValueChange = { height = it },
+                        label = { Text("키 (cm)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                if (!height.endsWith(" cm")) height += " cm"
+                                weightRequester.requestFocus()
+                            }
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(60.dp)
+                    )
+                    OutlinedTextField(
+                        value = weight,
+                        onValueChange = { weight = it },
+                        label = { Text("몸무게 (kg)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (!weight.endsWith(" kg")) weight += " kg"
+                                focusManager.clearFocus()
+                            }
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(60.dp)
+                            .focusRequester(weightRequester)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 Button(
-                    onClick = {
-                        navController.navigate(Screen.Main.route)
-                    },
+                    onClick = { navController.navigate(Screen.Main.route) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

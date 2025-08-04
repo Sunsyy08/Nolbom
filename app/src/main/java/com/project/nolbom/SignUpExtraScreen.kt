@@ -202,11 +202,11 @@ fun SignUpExtraScreen(navController: NavController) {
             Button(
                 onClick = {
                     when {
-                        birth.isBlank() -> {
+                        birthState.text.isBlank() -> {
                             errorMessage = "생년월일을 입력해주세요"
                             showErrorDialog = true
                         }
-                        phone.isBlank() -> {
+                        phoneState.text.isBlank() -> {
                             errorMessage = "핸드폰 번호를 입력해주세요"
                             showErrorDialog = true
                         }
@@ -301,7 +301,7 @@ private fun RoleOption(
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = if (selected) Color(0xFF4FD1A5) else Color(0xFFE0E0E0),
-            modifier = Modifier.size(120.dp)  // ← 여기서 사이즈를 키웁니다
+            modifier = Modifier.size(100.dp) // 이미지 크기 확대
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -325,4 +325,3 @@ private fun RoleOption(
         )
     }
 }
-
