@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -34,19 +35,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.compose.material3.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.input.VisualTransformation
+import com.project.nolbom.data.model.UserSignupRequest
+import com.project.nolbom.data.network.RetrofitClient
+import kotlinx.coroutines.launch
+
 
 
 @Composable
 fun SignUpScreen(navController: NavController) {
+
+    // 1) coroutine scope
+    val scope = rememberCoroutineScope()
+    // 2) form state
     var name by remember { mutableStateOf("") }
-    var userId by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     // 에러 다이얼로그용 상태
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -89,8 +100,8 @@ fun SignUpScreen(navController: NavController) {
 
         // 아이디 입력
         OutlinedTextField(
-            value = userId,
-            onValueChange = { userId = it },
+            value = email,
+            onValueChange = { email = it },
             label = { Text("아이디") },
             leadingIcon = {
                 Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF4CAF50))
@@ -137,13 +148,13 @@ fun SignUpScreen(navController: NavController) {
         // 가입하기 버튼
         Button(
             onClick = {
-                // 입력 검사
+                // 4) validation
                 when {
                     name.isBlank() -> {
                         errorMessage = "이름을 입력해주세요"
                         showErrorDialog = true
                     }
-                    userId.isBlank() -> {
+                    email.isBlank() -> {
                         errorMessage = "아이디를 입력해주세요"
                         showErrorDialog = true
                     }
@@ -152,10 +163,34 @@ fun SignUpScreen(navController: NavController) {
                         showErrorDialog = true
                     }
                     else -> {
-                        navController.navigate(Screen.SignUpExtra.route)
+                        // 5) call signup API
+                        isLoading = true
+                        scope.launch {
+                            try {
+                                val req = UserSignupRequest(
+                                    name = name,
+                                    email = email,
+                                    password = password
+                                )
+                                val resp = RetrofitClient.api.signup(req)
+                                if (!resp.success) {
+                                    throw Exception("회원가입에 실패했습니다")
+                                } // 생성된 유저 ID를 꺼내서
+                                val newUserId = resp.user_id
+                                // 성공 시 다음 화면으로 이동
+                                navController.navigate(Screen.SignUpExtra.createRoute(newUserId))
+                            } catch (e: Exception) {
+                                // 오류 처리
+                                errorMessage = e.localizedMessage ?: "회원가입에 실패했습니다"
+                                showErrorDialog = true
+                            } finally {
+                                isLoading = false
+                            }
+                        }
                     }
                 }
             },
+            enabled = !isLoading,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5)),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
@@ -163,11 +198,19 @@ fun SignUpScreen(navController: NavController) {
                 .height(80.dp)
                 .padding(top = 24.dp)
         ) {
-            Text("가입하기", color = Color.White, fontWeight = FontWeight.Bold)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White
+                )
+            } else {
+                Text("가입하기", color = Color.White, fontWeight = FontWeight.Bold)
+            }
         }
     }
 
-    // 에러 다이얼로그
+    // 6) 에러 다이얼로그
     if (showErrorDialog) {
         AlertDialog(
             onDismissRequest = { showErrorDialog = false },

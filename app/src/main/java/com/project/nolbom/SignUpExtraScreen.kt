@@ -1,47 +1,53 @@
-package com.project.nolbom
+package com.project.nolbom.ui.signup
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
-import kotlin.math.min
-
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.navigation.NavController
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.painterResource
+import com.project.nolbom.Screen
+import com.project.nolbom.data.model.SignupExtraRequest
+import com.project.nolbom.data.network.RetrofitClient
+import kotlinx.coroutines.launch
+import com.project.nolbom.R
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 
 @Composable
-fun SignUpExtraScreen(navController: NavController) {
-    var birth by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
+fun SignUpExtraScreen(
+    userId: Long,
+    navController: NavController
+) {
+    val scope = rememberCoroutineScope()
     var birthState by remember { mutableStateOf(TextFieldValue("")) }
     var phoneState by remember { mutableStateOf(TextFieldValue("")) }
-    var role by remember { mutableStateOf("") }
     val genderOptions = listOf("남성", "여성")
     var selectedGender by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("") }
 
     var showRoleDialog by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -63,30 +69,25 @@ fun SignUpExtraScreen(navController: NavController) {
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // 생년월일 입력 (YYYY-MM-DD)
+            // 생년월일 입력
             OutlinedTextField(
                 value = birthState,
                 onValueChange = { newValue ->
-                    // 입력된 전체 텍스트
-                    val digits = newValue.text.filter { it.isDigit() }
+                    val digits = newValue.text.filter { it.isDigit() }.take(8)
                     val year = digits.take(4)
                     val month = digits.drop(4).take(2)
                     val day = digits.drop(6).take(2)
-
-                    // 포맷된 새 문자열
                     val formatted = buildString {
                         append(year)
                         if (month.isNotEmpty()) append("-").append(month)
                         if (day.isNotEmpty()) append("-").append(day)
                     }
-
-                    // 커서를 항상 새 텍스트 맨 뒤로
                     birthState = TextFieldValue(
                         text = formatted,
                         selection = TextRange(formatted.length)
                     )
                 },
-                label = { Text("생년월일") },
+                label = { Text("생년월일 (YYYY-MM-DD)") },
                 leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = Color(0xFF4CAF50)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
@@ -99,7 +100,7 @@ fun SignUpExtraScreen(navController: NavController) {
                 )
             )
 
-            // 핸드폰 번호 입력 (XXX-XXXX-XXXX)
+            // 핸드폰 번호 입력
             OutlinedTextField(
                 value = phoneState,
                 onValueChange = { newValue ->
@@ -107,19 +108,17 @@ fun SignUpExtraScreen(navController: NavController) {
                     val part1 = digits.take(3)
                     val part2 = digits.drop(3).take(4)
                     val part3 = digits.drop(7).take(4)
-
                     val formatted = buildString {
                         append(part1)
                         if (part2.isNotEmpty()) append("-").append(part2)
                         if (part3.isNotEmpty()) append("-").append(part3)
                     }
-
                     phoneState = TextFieldValue(
                         text = formatted,
                         selection = TextRange(formatted.length)
                     )
                 },
-                label = { Text("핸드폰 번호") },
+                label = { Text("핸드폰 번호 (010-1234-5678)") },
                 leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFF4CAF50)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
@@ -132,7 +131,7 @@ fun SignUpExtraScreen(navController: NavController) {
                 )
             )
 
-            // ─── 성별 선택 ───
+            // 성별 선택
             Text(
                 text = "성별 선택",
                 fontSize = 14.sp,
@@ -169,7 +168,7 @@ fun SignUpExtraScreen(navController: NavController) {
                 }
             }
 
-            // 회원 유형 선택 버튼
+            // 회원 유형 선택
             Text(
                 text = "회원 유형",
                 fontWeight = FontWeight.Medium,
@@ -198,7 +197,7 @@ fun SignUpExtraScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ─── 다음 버튼 ───
+            // 다음 버튼
             Button(
                 onClick = {
                     when {
@@ -219,13 +218,34 @@ fun SignUpExtraScreen(navController: NavController) {
                             showErrorDialog = true
                         }
                         else -> {
-                            if (role == "ward")
-                                navController.navigate(Screen.WardSignup.route)
-                            else
-                                navController.navigate(Screen.GuardianSignup.route)
+                            isLoading = true
+                            scope.launch {
+                                try {
+                                    val req = SignupExtraRequest(
+                                        birthdate = birthState.text,
+                                        phone = phoneState.text,
+                                        gender = selectedGender,
+                                        role = role
+                                    )
+                                    val resp = RetrofitClient.api.signupExtra(userId, req)
+                                    if (!resp.success) throw Exception(resp.message)
+                                    // 역할에 따라 다음 화면으로
+                                    if (role == "ward") {
+                                        navController.navigate(Screen.WardSignup.createRoute(userId))
+                                    } else {
+                                        navController.navigate(Screen.GuardianSignup.createRoute(userId))
+                                    }
+                                } catch (e: Exception) {
+                                    errorMessage = e.localizedMessage ?: "추가 정보 저장 실패"
+                                    showErrorDialog = true
+                                } finally {
+                                    isLoading = false
+                                }
+                            }
                         }
                     }
                 },
+                enabled = !isLoading,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5)),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
@@ -233,12 +253,20 @@ fun SignUpExtraScreen(navController: NavController) {
                     .height(80.dp)
                     .padding(top = 20.dp)
             ) {
-                Text("다음", color = Color.White, fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                } else {
+                    Text("다음", color = Color.White, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
 
-    // 회원 유형 선택 다이얼로그
+    // 회원 유형 다이얼로그
     if (showRoleDialog) {
         AlertDialog(
             onDismissRequest = { showRoleDialog = false },
@@ -248,19 +276,11 @@ fun SignUpExtraScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    RoleOption(
-                        label = "노약자",
-                        drawable = R.drawable.guardian,
-                        selected = role == "ward"
-                    ) {
+                    RoleOption("노약자", R.drawable.guardian, role == "ward") {
                         role = "ward"
                         showRoleDialog = false
                     }
-                    RoleOption(
-                        label = "보호자",
-                        drawable = R.drawable.ward,
-                        selected = role == "guardian"
-                    ) {
+                    RoleOption("보호자", R.drawable.ward, role == "guardian") {
                         role = "guardian"
                         showRoleDialog = false
                     }
@@ -301,7 +321,7 @@ private fun RoleOption(
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = if (selected) Color(0xFF4FD1A5) else Color(0xFFE0E0E0),
-            modifier = Modifier.size(100.dp) // 이미지 크기 확대
+            modifier = Modifier.size(80.dp)
         ) {
             Box(
                 contentAlignment = Alignment.Center,
@@ -310,13 +330,13 @@ private fun RoleOption(
                     .padding(12.dp)
             ) {
                 Image(
-                    painter = painterResource(drawable),
+                    painter = painterResource(id = drawable),
                     contentDescription = label,
                     modifier = Modifier.fillMaxSize()
                 )
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             fontSize = 14.sp,
@@ -325,3 +345,4 @@ private fun RoleOption(
         )
     }
 }
+
