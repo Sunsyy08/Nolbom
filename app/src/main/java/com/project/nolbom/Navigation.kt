@@ -42,9 +42,12 @@ fun NolbomNavHost(navController: NavHostController) {
         composable(
             route = Screen.GuardianSignup.route,
             arguments = listOf(navArgument("userId") { type = NavType.LongType })
-        ) { backStack ->
-            val userId = backStack.arguments!!.getLong("userId")
-            GuardianSignupScreen(userId = userId, navController = navController)
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getLong("userId") ?: 0L
+            GuardianSignupScreen(
+                userId = userId,
+                navController = navController
+            )
         }
 
         composable(Screen.Main.route) {
