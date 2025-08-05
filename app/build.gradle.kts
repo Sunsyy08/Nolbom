@@ -41,7 +41,10 @@ android {
 
 dependencies {
 
-
+    // Moshi core
+    implementation("com.squareup.moshi:moshi:1.15.0")
+    // Moshi Kotlin reflection adapter
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
     // Retrofit + Moshi (Converter) + OkHttp Logging + Coroutines
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-moshi:2.9.0")    // Moshi 대신 Gson 쓰실 땐 converter-gson 사용

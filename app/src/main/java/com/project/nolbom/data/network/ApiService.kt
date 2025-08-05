@@ -5,6 +5,7 @@ import com.project.nolbom.data.model.SignupResponse
 import com.project.nolbom.data.model.GenericResponse
 import com.project.nolbom.data.model.UserSignupRequest
 import com.project.nolbom.data.model.SignupExtraRequest
+import com.project.nolbom.data.model.WardSignupRequest
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -27,6 +28,15 @@ interface ApiService {
     suspend fun signupExtra(
         @Path("user_id") userId: Long,
         @Body req: SignupExtraRequest
+    ): GenericResponse
+    /**
+     * 3단계: 노약자 전용 회원가입
+     * POST http://<BASE_URL>/signup/ward/{user_id}
+     */
+    @POST("signup/ward/{user_id}")
+    suspend fun signupWard(
+        @Path("user_id") userId: Long,
+        @Body req: WardSignupRequest
     ): GenericResponse
 }
 

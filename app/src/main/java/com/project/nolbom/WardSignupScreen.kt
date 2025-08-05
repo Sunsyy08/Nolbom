@@ -35,17 +35,27 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import com.project.nolbom.data.model.WardSignupRequest
+import com.project.nolbom.data.network.RetrofitClient
+import kotlinx.coroutines.launch
 
 @Composable
 fun WardSignupScreen(
-    navController: NavController
+    userId: Long,
+    navController: NavHostController
 ) {
+    val scope = rememberCoroutineScope()
     val profilePlaceholder = painterResource(id = R.drawable.ward_profile)
     var profileBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var height by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var medicalStatus by remember { mutableStateOf("") }
     var homeAddress by remember { mutableStateOf("") }
+
+    var isLoading       by remember { mutableStateOf(false) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage    by remember { mutableStateOf("") }
 
     // 카메라 론처
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -224,16 +234,67 @@ fun WardSignupScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { navController.navigate(Screen.Main.route) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB2EBF2))
+                    onClick = {
+                        // 빈 값 체크
+                        when {
+                            height.isBlank() -> errorMessage = "키를 입력해주세요"
+                            weight.isBlank() -> errorMessage = "몸무게를 입력해주세요"
+                            medicalStatus.isBlank() -> errorMessage = "의학 상태를 입력해주세요"
+                            homeAddress.isBlank() -> errorMessage = "집 주소를 입력해주세요"
+                            else -> {
+                                isLoading = true
+                                scope.launch {
+                                    try {
+                                        val rawHeight = height
+                                            .replace("[^\\d.]".toRegex(), "")  // 숫자와 소수점만 남김
+                                        val rawWeight = weight
+                                            .replace("[^\\d.]".toRegex(), "")
+
+                                        val heightVal = rawHeight.toFloat()
+                                        val weightVal = rawWeight.toFloat()
+                                        val req = WardSignupRequest(
+                                            height       = heightVal.toFloat(),
+                                            weight       = weightVal.toFloat(),
+                                            medicalStatus= medicalStatus,
+                                            homeAddress  = homeAddress
+                                        )
+                                        val resp = RetrofitClient.api.signupWard(userId, req)
+                                        if (!resp.success) throw Exception(resp.message)
+
+                                        // 저장 후 메인으로 이동
+                                        navController.navigate(Screen.Main.route) {
+                                            popUpTo(Screen.WardSignup.route) { inclusive = true }
+                                        }
+                                    } catch (e: Exception) {
+                                        errorMessage = e.localizedMessage ?: "노약자 정보 저장 실패"
+                                        showErrorDialog = true
+                                    } finally {
+                                        isLoading = false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("시작하기", color = Color.White, fontSize = 18.sp)
+                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Text("시작하기")
                 }
+            }
+
+            if (showErrorDialog) {
+                AlertDialog(
+                    onDismissRequest = { showErrorDialog = false },
+                    title   = { Text("오류") },
+                    text    = { Text(errorMessage) },
+                    confirmButton = {
+                        TextButton(onClick = { showErrorDialog = false }) {
+                            Text("확인")
+                        }
+                    }
+                )
+            }
             }
         }
     }
-}

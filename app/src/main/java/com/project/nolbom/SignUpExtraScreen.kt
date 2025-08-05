@@ -31,11 +31,12 @@ import kotlinx.coroutines.launch
 import com.project.nolbom.R
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import androidx.navigation.NavHostController
 
 @Composable
 fun SignUpExtraScreen(
     userId: Long,
-    navController: NavController
+    navController: NavHostController
 ) {
     val scope = rememberCoroutineScope()
     var birthState by remember { mutableStateOf(TextFieldValue("")) }
@@ -223,20 +224,25 @@ fun SignUpExtraScreen(
                                 try {
                                     val req = SignupExtraRequest(
                                         birthdate = birthState.text,
-                                        phone = phoneState.text,
-                                        gender = selectedGender,
-                                        role = role
+                                        phone     = phoneState.text,
+                                        gender    = selectedGender,
+                                        role      = role
                                     )
                                     val resp = RetrofitClient.api.signupExtra(userId, req)
                                     if (!resp.success) throw Exception(resp.message)
-                                    // 역할에 따라 다음 화면으로
+
+                                    // role 에 따라 각각의 화면으로 이동, 이전 스택(SignUpExtra) 제거
                                     if (role == "ward") {
-                                        navController.navigate(Screen.WardSignup.createRoute(userId))
+                                        navController.navigate(Screen.WardSignup.createRoute(userId)) {
+                                            popUpTo(Screen.SignUpExtra.route) { inclusive = true }
+                                        }
                                     } else {
-                                        navController.navigate(Screen.GuardianSignup.createRoute(userId))
+                                        navController.navigate(Screen.GuardianSignup.createRoute(userId)) {
+                                            popUpTo(Screen.SignUpExtra.route) { inclusive = true }
+                                        }
                                     }
                                 } catch (e: Exception) {
-                                    errorMessage = e.localizedMessage ?: "추가 정보 저장 실패"
+                                    errorMessage    = e.localizedMessage ?: "추가 정보 저장에 실패했습니다"
                                     showErrorDialog = true
                                 } finally {
                                     isLoading = false

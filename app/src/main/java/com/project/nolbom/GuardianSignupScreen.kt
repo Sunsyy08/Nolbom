@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 
 @Composable
 fun GuardianSignupScreen(
+    userId: Long,
     navController: NavController
 ) {
     val homeAddress = remember { mutableStateOf("") }

@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.project.nolbom.ui.signup.SignUpExtraScreen
 
+
 @Composable
 fun NolbomNavHost(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Screen.Start.route) {
@@ -30,21 +31,21 @@ fun NolbomNavHost(navController: NavHostController) {
             SignUpExtraScreen(userId = userId, navController = navController)
         }
         // WardSignup
-//        composable(
-//            route = Screen.WardSignup.route,
-//            arguments = listOf(navArgument("userId") { type = NavType.LongType })
-//        ) { backStack ->
-//            val userId = backStack.arguments!!.getLong("userId")
-//            WardSignupScreen(userId = userId, navController = navController)
-//        }
+        composable(
+            route = Screen.WardSignup.route,
+            arguments = listOf(navArgument("userId") { type = NavType.LongType })
+        ) { backStack ->
+            val userId = backStack.arguments!!.getLong("userId")
+            WardSignupScreen(userId = userId, navController = navController)
+        }
         // GuardianSignup
-//        composable(
-//            route = Screen.GuardianSignup.route,
-//            arguments = listOf(navArgument("userId") { type = NavType.LongType })
-//        ) { backStack ->
-//            val userId = backStack.arguments!!.getLong("userId")
-//            GuardianSignupScreen(userId = userId, navController = navController)
-//        }
+        composable(
+            route = Screen.GuardianSignup.route,
+            arguments = listOf(navArgument("userId") { type = NavType.LongType })
+        ) { backStack ->
+            val userId = backStack.arguments!!.getLong("userId")
+            GuardianSignupScreen(userId = userId, navController = navController)
+        }
 
         composable(Screen.Main.route) {
             MainScreen(
