@@ -12,7 +12,7 @@ class AddressRepository {
 
     suspend fun getLatLng(address: String): Pair<String, String>? =
         withContext(Dispatchers.IO) {
-            val resp = api.searchAddress(key, address)
+            val resp = api.searchAddress(address)
             resp.documents.firstOrNull()?.address?.let {
                 it.y to it.x
             }

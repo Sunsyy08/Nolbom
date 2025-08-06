@@ -185,11 +185,8 @@ fun WardSignupScreen(
                     scope.launch {
                         try {
                             // RetrofitClient.api 대신 NetworkModule.kakaoApi 로 호출
-                            val resp: KakaoAddressResponse =
-                                NetworkModule.kakaoApi.searchAddress(
-                                    "KakaoAK ${BuildConfig.KAKAO_REST_API_KEY}",
-                                    homeAddress
-                                )
+                            val resp = NetworkModule.kakaoApi.searchAddress(homeAddress)
+                            latLng = resp.documents.firstOrNull()?.address?.let { it.y to it.x }
 
                             // resp.documents 에는 Document.address 가 있고, 그 안에 x,y 가 있습니다.
                             latLng = resp.documents

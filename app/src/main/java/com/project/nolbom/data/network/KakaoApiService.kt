@@ -14,7 +14,6 @@ data class KakaoAddressResponse(
 interface KakaoApiService {
     @GET("v2/local/search/address.json")
     suspend fun searchAddress(
-        @Header("Authorization") auth: String,
         @Query("query") query: String
     ): KakaoAddressResponse
 }
