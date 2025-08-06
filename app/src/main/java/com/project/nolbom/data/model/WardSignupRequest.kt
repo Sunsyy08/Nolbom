@@ -12,6 +12,15 @@ data class WardSignupRequest(
     val medicalStatus: String,
 
     @Json(name = "home_address")
-    val homeAddress: String
+    val homeAddress: String,
+
+    @Json(name = "safe_lat")
+    val safeLat: Double,
+
+    @Json(name = "safe_lng")
+    val safeLng: Double,
+
+    @Json(name = "safe_radius")
+    val safeRadius: Int
 )
 

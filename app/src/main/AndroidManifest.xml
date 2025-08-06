@@ -30,6 +30,11 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyDQQGSIvGXmPAUUDX4AsMuBsjKVkCQUagg" />
+
+        <!-- 카카오 지도·로그인 등 SDK 전반에 쓰이는 네이티브 앱 키 -->
+        <meta-data
+            android:name="com.kakao.sdk.AppKey"
+            android:value="43dc42fa64bbd715fef5f7cffc8cceda" />
     </application>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>

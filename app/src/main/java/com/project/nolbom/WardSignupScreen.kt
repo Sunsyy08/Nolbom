@@ -39,6 +39,9 @@ import androidx.navigation.NavHostController
 import com.project.nolbom.data.model.WardSignupRequest
 import com.project.nolbom.data.network.RetrofitClient
 import kotlinx.coroutines.launch
+import com.project.nolbom.data.network.NetworkModule
+import com.project.nolbom.data.network.KakaoAddressResponse  // 추가
+
 
 @Composable
 fun WardSignupScreen(
@@ -52,6 +55,8 @@ fun WardSignupScreen(
     var weight by remember { mutableStateOf("") }
     var medicalStatus by remember { mutableStateOf("") }
     var homeAddress by remember { mutableStateOf("") }
+    var latLng      by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var safeRadius  by remember { mutableStateOf("") }
 
     var isLoading       by remember { mutableStateOf(false) }
     var showErrorDialog by remember { mutableStateOf(false) }
@@ -163,6 +168,7 @@ fun WardSignupScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // 기존의 집 주소 입력 필드 바로 아래에 붙여주세요
                 OutlinedTextField(
                     value = homeAddress,
                     onValueChange = { homeAddress = it },
@@ -173,6 +179,41 @@ fun WardSignupScreen(
                         .fillMaxWidth()
                         .height(60.dp)
                 )
+
+                Button(onClick = {
+                    isLoading = true
+                    scope.launch {
+                        try {
+                            // RetrofitClient.api 대신 NetworkModule.kakaoApi 로 호출
+                            val resp: KakaoAddressResponse =
+                                NetworkModule.kakaoApi.searchAddress(
+                                    "KakaoAK ${BuildConfig.KAKAO_REST_API_KEY}",
+                                    homeAddress
+                                )
+
+                            // resp.documents 에는 Document.address 가 있고, 그 안에 x,y 가 있습니다.
+                            latLng = resp.documents
+                                .firstOrNull()
+                                ?.address
+                                ?.let { it.y to it.x }
+
+                        } catch(e: Exception) {
+                            errorMessage = e.message ?: "주소 변환 실패"
+                            showErrorDialog = true
+                        } finally {
+                            isLoading = false
+                        }
+                    }
+                }) {
+                    Text("주소 검색")
+                }
+
+                // 좌표가 세팅되면 화면에 보여줍니다
+                latLng?.let { (lat, lng) ->
+                    Text("위도: $lat", modifier = Modifier.padding(start = 8.dp, top = 4.dp))
+                    Text("경도: $lng", modifier = Modifier.padding(start = 8.dp))
+                }
+
 
                 OutlinedTextField(
                     value = medicalStatus,
@@ -231,6 +272,20 @@ fun WardSignupScreen(
                     )
                 }
 
+                // 기존 키/몸무게 입력 Row 다음, Spacer 전에 추가하세요
+                OutlinedTextField(
+                    value = safeRadius,
+                    onValueChange = { safeRadius = it },
+                    label = { Text("안전 반경 (m)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                )
+
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
@@ -253,10 +308,13 @@ fun WardSignupScreen(
                                         val heightVal = rawHeight.toFloat()
                                         val weightVal = rawWeight.toFloat()
                                         val req = WardSignupRequest(
-                                            height       = heightVal.toFloat(),
-                                            weight       = weightVal.toFloat(),
-                                            medicalStatus= medicalStatus,
-                                            homeAddress  = homeAddress
+                                            height        = heightVal,
+                                            weight        = weightVal,
+                                            medicalStatus = medicalStatus,
+                                            homeAddress   = homeAddress,
+                                            safeLat       = latLng?.first?.toDouble() ?: 0.0,
+                                            safeLng       = latLng?.second?.toDouble() ?: 0.0,
+                                            safeRadius    = safeRadius.toIntOrNull() ?: 0
                                         )
                                         val resp = RetrofitClient.api.signupWard(userId, req)
                                         if (!resp.success) throw Exception(resp.message)

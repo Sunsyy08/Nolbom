@@ -16,6 +16,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 카카오맵 REST api
+        buildConfigField(
+            "String",
+            "KAKAO_REST_API_KEY",
+            "\"${project.property("KAKAO_REST_API_KEY") as String}\""
+        )
     }
 
     buildTypes {
@@ -36,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
