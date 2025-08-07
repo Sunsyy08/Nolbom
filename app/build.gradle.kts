@@ -49,6 +49,7 @@ android {
 
 dependencies {
 
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.kakao.sdk:v2-all:2.21.4")
     // Moshi core
     implementation("com.squareup.moshi:moshi:1.15.0")

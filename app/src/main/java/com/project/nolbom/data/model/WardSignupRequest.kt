@@ -7,20 +7,11 @@ import com.squareup.moshi.Json
 data class WardSignupRequest(
     val height: Float,
     val weight: Float,
-
-    @Json(name = "medical_status")
-    val medicalStatus: String,
-
-    @Json(name = "home_address")
-    val homeAddress: String,
-
-    @Json(name = "safe_lat")
-    val safeLat: Double,
-
-    @Json(name = "safe_lng")
-    val safeLng: Double,
-
-    @Json(name = "safe_radius")
-    val safeRadius: Int
+    @Json(name="medical_status") val medicalStatus: String,
+    @Json(name="home_address")   val homeAddress: String,
+    @Json(name="safe_lat")       val safeLat: Double,
+    @Json(name="safe_lng")       val safeLng: Double,
+    @Json(name="safe_radius")    val safeRadius: Int,
+    @Json(name="profile_image")  val profileImage: String
 )
 

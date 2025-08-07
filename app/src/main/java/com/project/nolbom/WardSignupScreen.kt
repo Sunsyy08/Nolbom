@@ -1,6 +1,7 @@
 package com.project.nolbom
 
 import android.graphics.Bitmap
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +42,12 @@ import com.project.nolbom.data.network.RetrofitClient
 import kotlinx.coroutines.launch
 import com.project.nolbom.data.network.NetworkModule
 import com.project.nolbom.data.network.KakaoAddressResponse  // 추가
+import com.project.nolbom.utils.toPlainPart
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.ByteArrayOutputStream
+import java.io.File
 
 
 @Composable
@@ -50,7 +57,6 @@ fun WardSignupScreen(
 ) {
     val scope = rememberCoroutineScope()
     val profilePlaceholder = painterResource(id = R.drawable.ward_profile)
-    var profileBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var height by remember { mutableStateOf("") }
     var weight by remember { mutableStateOf("") }
     var medicalStatus by remember { mutableStateOf("") }
@@ -62,14 +68,48 @@ fun WardSignupScreen(
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage    by remember { mutableStateOf("") }
 
-    // 카메라 론처
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        if (bitmap != null) profileBitmap = bitmap
-    }
-    val focusManager = LocalFocusManager.current
+    val apiService = RetrofitClient.api
+    val context    = LocalContext.current
+
+    val focusManager     = LocalFocusManager.current
     val weightRequester = remember { FocusRequester() }
+
+
+    // ─── 카메라 + 얼굴 인식 업로드 로직 ───
+    var profileFilename  by remember { mutableStateOf<String?>(null) }
+    var profileBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap == null) return@rememberLauncherForActivityResult
+
+        // 비트맵을 파일로 저장
+        val file = File(context.cacheDir, "capture.png").apply { delete() }
+        ByteArrayOutputStream().use { baos ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
+            file.writeBytes(baos.toByteArray())
+        }
+        // MultipartBody.Part 생성
+        val part = MultipartBody.Part.createFormData(
+            "file", file.name,
+            file.asRequestBody("image/png".toMediaTypeOrNull())
+        )
+        // 서버 업로드
+        scope.launch {
+            try {
+                val resp = apiService.uploadCapture(part)
+                if (resp.success) {
+                    profileBitmap   = bitmap
+                    profileFilename = resp.filename
+                    Toast.makeText(context, "얼굴 인식 및 저장 완료", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, resp.message ?: "얼굴 인식 실패", Toast.LENGTH_LONG).show()
+                }
+            } catch(e: Exception) {
+                Toast.makeText(context, "업로드 오류: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -101,24 +141,22 @@ fun WardSignupScreen(
                     // 원형 프로필 이미지
                     Box(
                         modifier = Modifier
-                            .matchParentSize()
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .clickable { cameraLauncher.launch(null) }
+                            .size(120.dp)
+                            .clickable { cameraLauncher.launch(null) },
+                        contentAlignment = Alignment.Center
                     ) {
                         if (profileBitmap != null) {
                             Image(
                                 bitmap = profileBitmap!!.asImageBitmap(),
-                                contentDescription = "프로필 이미지",
+                                contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.matchParentSize()
                             )
                         } else {
-                            Image(
-                                painter = profilePlaceholder,
-                                contentDescription = "프로필 기본 이미지",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "프로필 등록",
+                                modifier = Modifier.size(48.dp)
                             )
                         }
                     }
@@ -289,37 +327,70 @@ fun WardSignupScreen(
                     onClick = {
                         // 빈 값 체크
                         when {
-                            height.isBlank() -> errorMessage = "키를 입력해주세요"
-                            weight.isBlank() -> errorMessage = "몸무게를 입력해주세요"
-                            medicalStatus.isBlank() -> errorMessage = "의학 상태를 입력해주세요"
-                            homeAddress.isBlank() -> errorMessage = "집 주소를 입력해주세요"
+                            height.isBlank()       -> errorMessage = "키를 입력해주세요"
+                            weight.isBlank()       -> errorMessage = "몸무게를 입력해주세요"
+                            medicalStatus.isBlank()-> errorMessage = "의학 상태를 입력해주세요"
+                            homeAddress.isBlank()  -> errorMessage = "집 주소를 입력해주세요"
+                            profileBitmap == null  -> {
+                                Toast.makeText(context, "프로필을 먼저 등록해주세요", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
                             else -> {
                                 isLoading = true
                                 scope.launch {
                                     try {
-                                        val rawHeight = height
-                                            .replace("[^\\d.]".toRegex(), "")  // 숫자와 소수점만 남김
-                                        val rawWeight = weight
-                                            .replace("[^\\d.]".toRegex(), "")
+                                        // 1) 순수 숫자만 추출
+                                        val rawHeight = height.replace("[^\\d.]".toRegex(), "")
+                                        val rawWeight = weight.replace("[^\\d.]".toRegex(), "")
 
-                                        val heightVal = rawHeight.toFloat()
-                                        val weightVal = rawWeight.toFloat()
-                                        val req = WardSignupRequest(
-                                            height        = heightVal,
-                                            weight        = weightVal,
-                                            medicalStatus = medicalStatus,
-                                            homeAddress   = homeAddress,
-                                            safeLat       = latLng?.first?.toDouble() ?: 0.0,
-                                            safeLng       = latLng?.second?.toDouble() ?: 0.0,
-                                            safeRadius    = safeRadius.toIntOrNull() ?: 0
+                                        // 2) Bitmap → 임시 파일 저장
+                                        val file = File(context.cacheDir, "profile.png").apply {
+                                            if (exists()) delete()
+                                            createNewFile()
+                                            profileBitmap!!.compress(
+                                                Bitmap.CompressFormat.PNG,
+                                                100,
+                                                outputStream()
+                                            )
+                                        }
+
+                                        // 3) MultipartBody.Part (이미지)
+                                        val imageReqBody = file
+                                            .asRequestBody("image/png".toMediaTypeOrNull())
+                                        val imagePart = MultipartBody.Part.createFormData(
+                                            name = "profile_image_file",
+                                            filename = file.name,
+                                            body = imageReqBody
                                         )
-                                        val resp = RetrofitClient.api.signupWard(userId, req)
+
+                                        // 4) 나머지 값들 RequestBody 변환
+                                        val partHeight = rawHeight.toPlainPart()
+                                        val partWeight = rawWeight.toPlainPart()
+                                        val partMS     = medicalStatus.toPlainPart()
+                                        val partAddr   = homeAddress.toPlainPart()
+                                        val partLat    = (latLng?.first ?: "0.0").toPlainPart()
+                                        val partLng    = (latLng?.second ?: "0.0").toPlainPart()
+                                        val partRadius = safeRadius.toPlainPart()
+
+                                        // 5) multipart API 호출
+                                        val resp = RetrofitClient.api.signupWardMultipart(
+                                            userId            = userId,
+                                            height            = partHeight,
+                                            weight            = partWeight,
+                                            medicalStatus     = partMS,
+                                            homeAddress       = partAddr,
+                                            safeLat           = partLat,
+                                            safeLng           = partLng,
+                                            safeRadius        = partRadius,
+                                            profileImageFile  = imagePart
+                                        )
                                         if (!resp.success) throw Exception(resp.message)
 
-                                        // 저장 후 메인으로 이동
+                                        // 6) 성공 시 이동
                                         navController.navigate(Screen.Main.route) {
                                             popUpTo(Screen.WardSignup.route) { inclusive = true }
                                         }
+
                                     } catch (e: Exception) {
                                         errorMessage = e.localizedMessage ?: "노약자 정보 저장 실패"
                                         showErrorDialog = true
@@ -333,8 +404,10 @@ fun WardSignupScreen(
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Text("시작하기")
+                    if (isLoading) CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    ) else Text("시작하기")
                 }
             }
 
