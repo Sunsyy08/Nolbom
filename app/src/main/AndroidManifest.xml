@@ -3,6 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 네트워크 통신을 위해 반드시 추가 -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- 하드웨어 기능 선언 (경고 해결용) -->
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="false" />
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application

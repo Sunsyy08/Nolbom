@@ -1,6 +1,8 @@
 package com.project.nolbom
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -58,7 +60,28 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.project.nolbom.data.model.UserProfile
 import com.project.nolbom.data.repository.UserRepository
 
-// ❌ MainUiState 클래스 제거 (MainViewModel.kt에 있음)
+// 전화 앱 실행을 위한 함수
+fun openPhoneApp(context: Context) {
+    try {
+        // 전화 다이얼러를 열기 (번호 입력 화면)
+        val intent = Intent(Intent.ACTION_DIAL)
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+// 특정 번호로 전화를 거는 함수 (옵션)
+fun callPhoneNumber(context: Context, phoneNumber: String) {
+    try {
+        val intent = Intent(Intent.ACTION_DIAL).apply {
+            data = Uri.parse("tel:$phoneNumber")
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
 
 fun loadUsersFromAssets(context: Context): List<AlertUser> {
     val jsonString = context.assets.open("user.json").bufferedReader().use { it.readText() }
@@ -193,7 +216,10 @@ fun MainScreen(onNavigateToAlertList: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         ActionCardSection(onNavigateToAlertList)
         Spacer(modifier = Modifier.weight(1f))
-        BottomTabBar()
+        // 전화 앱 실행 함수를 전달
+        BottomTabBar(
+            onPhoneClick = { openPhoneApp(context) }
+        )
     }
 }
 
@@ -401,7 +427,8 @@ fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier) 
 fun BottomTabBar(
     modifier: Modifier = Modifier,
     onTabSelected: (TabItem) -> Unit = {},
-    selectedTab: TabItem = TabItem.Home
+    selectedTab: TabItem = TabItem.Home,
+    onPhoneClick: () -> Unit = {} // 전화 클릭 콜백 추가
 ) {
     val tabs = listOf(
         TabItem.Profile,
@@ -430,7 +457,13 @@ fun BottomTabBar(
                 TabIcon(
                     tab = tab,
                     isSelected = tab == selectedTab,
-                    onClick = { onTabSelected(tab) }
+                    onClick = {
+                        if (tab == TabItem.Call) {
+                            onPhoneClick() // 전화 탭 클릭시 전화 앱 실행
+                        } else {
+                            onTabSelected(tab)
+                        }
+                    }
                 )
             }
         }
