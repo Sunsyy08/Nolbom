@@ -15,4 +15,5 @@ sealed class Screen(val route: String) {
     object GuardianSignup    : Screen("signup/guardian/{userId}") {
         fun createRoute(userId: Long) = "signup/guardian/$userId"
     }
+    object Profile : Screen("profile")
 }

@@ -83,4 +83,9 @@ interface ApiService {
     suspend fun getProfileImage(
         @Header("Authorization") token: String
     ): Response<ResponseBody>
+
+    @GET("/user/full-profile")
+    suspend fun getProfile(
+        @Header("Authorization") token: String
+    ): Response<ProfileResponse>
 }

@@ -52,10 +52,14 @@ fun NolbomNavHost(navController: NavHostController) {
 
         composable(Screen.Main.route) {
             MainScreen(
+                navController = navController, // NavController 전달
                 onNavigateToAlertList = {
                     navController.navigate(Screen.AlertList.route)
                 }
             )
+        }
+        composable(Screen.Profile.route) {
+            ProfileScreen(navController = navController) // ← 필요 시 파라미터 맞춰주세요
         }
         composable(Screen.AlertList.route) {
             AlertListScreen()

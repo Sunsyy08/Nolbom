@@ -55,6 +55,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.navigation.NavHostController
 
 // 올바른 import 경로들
 import com.project.nolbom.data.model.UserProfile
@@ -91,7 +92,11 @@ fun loadUsersFromAssets(context: Context): List<AlertUser> {
 }
 
 @Composable
-fun MainScreen(onNavigateToAlertList: () -> Unit) {
+fun MainScreen(
+    navController: NavHostController,
+    onNavigateToAlertList: () -> Unit
+
+) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
@@ -218,7 +223,13 @@ fun MainScreen(onNavigateToAlertList: () -> Unit) {
         Spacer(modifier = Modifier.weight(1f))
         // 전화 앱 실행 함수를 전달
         BottomTabBar(
-            onPhoneClick = { openPhoneApp(context) }
+            onPhoneClick = { openPhoneApp(context) },
+            onTabSelected = { tab ->
+                when (tab) {
+                    TabItem.Profile -> navController.navigate(Screen.Profile.route) // ← 프로필 이동
+                    else -> { /* 다른 탭 동작 */ }
+                }
+            }
         )
     }
 }
