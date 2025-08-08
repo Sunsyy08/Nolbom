@@ -30,12 +30,15 @@ import androidx.navigation.NavController
 import com.project.nolbom.R
 import com.project.nolbom.data.model.GuardianSignupRequest
 import com.project.nolbom.data.network.RetrofitClient
+import com.project.nolbom.data.repository.SignupRepository
 import kotlinx.coroutines.launch
 
 @Composable
 fun GuardianSignupScreen(
     userId: Long,
-    navController: NavController
+    navController: NavController,
+    userEmail: String = "", // 🆕 추가: 회원가입 시 입력한 이메일
+    userName: String = ""   // 🆕 추가: 회원가입 시 입력한 이름
 ) {
     val context = LocalContext.current
     var wardEmail by remember { mutableStateOf("") }
@@ -45,6 +48,9 @@ fun GuardianSignupScreen(
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+
+    // 🆕 SignupRepository 인스턴스 생성
+    val signupRepository = remember { SignupRepository(context = context) }
 
     Column(
         modifier = Modifier
@@ -151,20 +157,27 @@ fun GuardianSignupScreen(
                                 else -> {
                                     isLoading = true
                                     try {
-                                        val req = GuardianSignupRequest(
+                                        // 🔧 SignupRepository의 completeGuardianSignup 사용
+                                        val result = signupRepository.completeGuardianSignup(
+                                            userId = userId,
                                             wardEmail = wardEmail.trim(),
                                             address = address.trim(),
-                                            relation = relation.trim()
+                                            relation = relation.trim(),
+                                            userEmail = userEmail, // 🎯 회원가입 시 입력한 이메일
+                                            userName = userName    // 🎯 회원가입 시 입력한 이름
                                         )
-                                        val resp = RetrofitClient.api.signupGuardian(userId, req)
-                                        if (resp.success) {
+
+                                        result.onSuccess { successMessage ->
+                                            // 🎉 성공! 토큰과 사용자 정보가 자동으로 저장됨
+                                            Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
                                             navController.navigate(Screen.Main.route) {
                                                 popUpTo(Screen.GuardianSignup.route) { inclusive = true }
                                             }
-                                        } else {
-                                            errorMessage = resp.message
+                                        }.onFailure { exception ->
+                                            errorMessage = exception.message ?: "회원가입 실패"
                                             showErrorDialog = true
                                         }
+
                                     } catch (e: Exception) {
                                         errorMessage = e.localizedMessage ?: "오류가 발생했습니다"
                                         showErrorDialog = true
@@ -173,7 +186,9 @@ fun GuardianSignupScreen(
                                     }
                                 }
                             }
-                            if (errorMessage.isNotBlank() && showErrorDialog.not()) showErrorDialog = true
+                            if (errorMessage.isNotBlank() && !showErrorDialog) {
+                                showErrorDialog = true
+                            }
                         }
                     },
                     modifier = Modifier
@@ -183,17 +198,30 @@ fun GuardianSignupScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                     enabled = !isLoading
                 ) {
-                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    else Text("시작하기", fontSize = 16.sp, color = Color.White)
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                    } else {
+                        Text("시작하기", fontSize = 16.sp, color = Color.White)
+                    }
                 }
 
                 if (showErrorDialog) {
                     AlertDialog(
-                        onDismissRequest = { showErrorDialog = false },
-                        title = { Text("입력 오류") },
+                        onDismissRequest = {
+                            showErrorDialog = false
+                            errorMessage = ""
+                        },
+                        title = { Text("회원가입 오류") },
                         text = { Text(errorMessage) },
                         confirmButton = {
-                            TextButton(onClick = { showErrorDialog = false }) {
+                            TextButton(onClick = {
+                                showErrorDialog = false
+                                errorMessage = ""
+                            }) {
                                 Text("확인")
                             }
                         }

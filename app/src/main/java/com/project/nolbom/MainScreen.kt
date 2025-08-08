@@ -5,8 +5,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +45,20 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.accompanist.flowlayout.FlowRow
 
+// API 연동을 위한 추가 imports
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asImageBitmap
+
+// 올바른 import 경로들
+import com.project.nolbom.data.model.UserProfile
+import com.project.nolbom.data.repository.UserRepository
+
+// ❌ MainUiState 클래스 제거 (MainViewModel.kt에 있음)
 
 fun loadUsersFromAssets(context: Context): List<AlertUser> {
     val jsonString = context.assets.open("user.json").bufferedReader().use { it.readText() }
@@ -60,7 +72,14 @@ fun MainScreen(onNavigateToAlertList: () -> Unit) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    // JSON에서 사용자 리스트 읽기 (Compose 재구성 시마다 불필요한 호출 막으려 remember로 감싸기)
+    // ViewModel 생성을 정확한 Composable 문맥에서 실행
+    val viewModel: MainViewModel = viewModel {
+        MainViewModel(UserRepository(context))
+    }
+
+    val uiState by viewModel.uiState.collectAsState()
+
+    // JSON에서 사용자 리스트 읽기
     val userList = remember {
         loadUsersFromAssets(context)
     }
@@ -72,27 +91,79 @@ fun MainScreen(onNavigateToAlertList: () -> Unit) {
             .padding(top = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 상단 프로필 헤더
-        ProfileHeader(
-            userName = "김철수",
-            userRegion = "서울 은평구"
+        // 로딩 상태 표시
+        if (uiState.isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.padding(16.dp),
+                color = Color(0xFF83E3BD)
+            )
+        }
+
+        // 에러 상태 표시
+        uiState.error?.let { error ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "프로필 로드 실패",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFFD32F2F)
+                    )
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF666666)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row {
+                        Button(
+                            onClick = { viewModel.retryLoadProfile() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF83E3BD))
+                        ) {
+                            Text("다시 시도")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // 🆕 테스트용 데이터 초기화 버튼
+                        Button(
+                            onClick = { viewModel.clearUserData() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722))
+                        ) {
+                            Text("데이터 초기화")
+                        }
+                    }
+                }
+            }
+        }
+
+        // 상단 프로필 헤더 (실제 데이터 사용)
+        ProfileHeaderWithData(
+            userProfile = uiState.userProfile,
+            profileBitmap = uiState.profileBitmap
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 중간 영역: 왼쪽 리스트, 오른쪽 지도 (가로 분할)
+        // 중간 영역: 왼쪽 리스트, 오른쪽 지도
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .height(400.dp)
         ) {
-            // 🟢 리스트 영역 Box로 감싸고 배경색 지정
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .background(Color(0xFF83E3BD), RoundedCornerShape(20.dp)) // 💚 이 색!
+                    .background(Color(0xFF83E3BD), RoundedCornerShape(20.dp))
                     .padding(8.dp)
             ) {
                 LazyColumn(
@@ -107,7 +178,6 @@ fun MainScreen(onNavigateToAlertList: () -> Unit) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 지도 영역
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -119,14 +189,64 @@ fun MainScreen(onNavigateToAlertList: () -> Unit) {
                 )
             }
         }
+
         Spacer(modifier = Modifier.height(16.dp))
         ActionCardSection(onNavigateToAlertList)
-        Spacer(modifier = Modifier.weight(1f)) // 내용 밀어올림
+        Spacer(modifier = Modifier.weight(1f))
         BottomTabBar()
-        // 여기에 버튼 등 추가 가능
     }
 }
 
+// 실제 데이터를 사용하는 프로필 헤더
+@Composable
+fun ProfileHeaderWithData(
+    userProfile: UserProfile?,
+    profileBitmap: Bitmap?
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+    ) {
+        // 프로필 이미지 (실제 데이터 또는 기본 이미지)
+        if (profileBitmap != null) {
+            Image(
+                bitmap = profileBitmap.asImageBitmap(),
+                contentDescription = "프로필 이미지",
+                modifier = Modifier
+                    .size(70.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.profile),
+                contentDescription = "기본 프로필 이미지",
+                modifier = Modifier
+                    .size(70.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // 사용자 이름 + 주소 (실제 데이터 또는 기본값)
+        Column(
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = userProfile?.name ?: "사용자",
+                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 30.sp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = userProfile?.home_address ?: "주소 정보 없음",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 20.sp)
+            )
+        }
+    }
+}
 
 @Composable
 fun ProfileHeader(userName: String, userRegion: String) {
@@ -135,7 +255,6 @@ fun ProfileHeader(userName: String, userRegion: String) {
         modifier = Modifier
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
-        // 프로필 이미지 (왼쪽)
         Image(
             painter = painterResource(id = R.drawable.profile),
             contentDescription = "프로필 이미지",
@@ -146,7 +265,6 @@ fun ProfileHeader(userName: String, userRegion: String) {
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // 사용자 이름 + 지역 (오른쪽)
         Column(
             verticalArrangement = Arrangement.Center
         ) {
@@ -216,21 +334,19 @@ fun AlertCardSmall(user: AlertUser) {
 
 @Composable
 fun ActionCardSection(onNavigateToAlertList: () -> Unit) {
-    // Row 전체를 감싸는 카드 배경
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(8.dp),
-        // 원하는 카드 배경색 지정
         colors = CardDefaults.cardColors(containerColor = Color(0xFFE0E0E0))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFF83E3BD), RoundedCornerShape(12.dp))
-                .padding(12.dp), // 카드 안쪽 패딩
+                .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             ActionCard(
@@ -261,7 +377,7 @@ fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier) 
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()        // 내부 전체를 차지해서 가운데 정렬이 정확하게 됨
+                .fillMaxSize()
                 .padding(vertical = 16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -280,7 +396,6 @@ fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier) 
         }
     }
 }
-
 
 @Composable
 fun BottomTabBar(
@@ -324,7 +439,6 @@ fun BottomTabBar(
 
 sealed class TabItem(val title: String, val icon: @Composable () -> Unit) {
     object Profile : TabItem("프로필", {
-        // 프로필 이미지를 아이콘처럼
         Image(
             painter = painterResource(id = R.drawable.profile),
             contentDescription = "프로필",
@@ -336,7 +450,7 @@ sealed class TabItem(val title: String, val icon: @Composable () -> Unit) {
     })
     object Call : TabItem("전화", { Icon(Icons.Default.Call, contentDescription = "전화") })
     object Home : TabItem("홈", { Icon(Icons.Default.Home, contentDescription = "홈") })
-    object Chat : TabItem("채팅", { Icon(Icons.Default.Person, contentDescription = "채팅") }) // 사람 아이콘
+    object Chat : TabItem("채팅", { Icon(Icons.Default.Person, contentDescription = "채팅") })
     object Settings : TabItem("설정", { Icon(Icons.Default.Settings, contentDescription = "설정") })
 }
 

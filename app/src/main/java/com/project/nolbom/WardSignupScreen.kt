@@ -53,7 +53,9 @@ import java.io.File
 @Composable
 fun WardSignupScreen(
     userId: Long,
-    navController: NavHostController
+    navController: NavHostController,
+    userEmail: String = "", // 🆕 추가: 회원가입 시 입력한 이메일
+    userName: String = ""   // 🆕 추가: 회원가입 시 입력한 이름
 ) {
     val scope = rememberCoroutineScope()
     val profilePlaceholder = painterResource(id = R.drawable.ward_profile)
@@ -74,6 +76,10 @@ fun WardSignupScreen(
     val focusManager     = LocalFocusManager.current
     val weightRequester = remember { FocusRequester() }
 
+    // 🆕 SignupRepository 추가
+    val signupRepository = remember {
+        com.project.nolbom.data.repository.SignupRepository(context = context)
+    }
 
     // ─── 카메라 + 얼굴 인식 업로드 로직 ───
     var profileFilename  by remember { mutableStateOf<String?>(null) }
@@ -343,52 +349,44 @@ fun WardSignupScreen(
                                         val rawHeight = height.replace("[^\\d.]".toRegex(), "")
                                         val rawWeight = weight.replace("[^\\d.]".toRegex(), "")
 
-                                        // 2) Bitmap → 임시 파일 저장
-                                        val file = File(context.cacheDir, "profile.png").apply {
-                                            if (exists()) delete()
-                                            createNewFile()
-                                            profileBitmap!!.compress(
-                                                Bitmap.CompressFormat.PNG,
-                                                100,
-                                                outputStream()
-                                            )
-                                        }
+                                        // 2) Bitmap → ByteArray 변환
+                                        val outputStream = ByteArrayOutputStream()
+                                        profileBitmap!!.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+                                        val imageByteArray = outputStream.toByteArray()
 
-                                        // 3) MultipartBody.Part (이미지)
-                                        val imageReqBody = file
-                                            .asRequestBody("image/png".toMediaTypeOrNull())
-                                        val imagePart = MultipartBody.Part.createFormData(
-                                            name = "profile_image_file",
-                                            filename = file.name,
-                                            body = imageReqBody
+                                        // 3) MultipartBody.Part 생성 (새로운 헬퍼 함수 사용)
+                                        val imagePart = com.project.nolbom.data.repository.SignupRepository
+                                            .createImagePart(imageByteArray, "profile.jpg")
+
+                                        // 🎯 4) SignupRepository의 completeWardSignup 사용
+                                        val result = signupRepository.completeWardSignup(
+                                            userId = userId,
+                                            height = rawHeight,
+                                            weight = rawWeight,
+                                            medicalStatus = medicalStatus,
+                                            homeAddress = homeAddress,
+                                            safeLat = latLng?.first ?: "0.0",
+                                            safeLng = latLng?.second ?: "0.0",
+                                            safeRadius = safeRadius,
+                                            profileImageFile = imagePart,
+                                            userEmail = userEmail, // 🎯 회원가입 시 입력한 이메일
+                                            userName = userName    // 🎯 회원가입 시 입력한 이름
                                         )
 
-                                        // 4) 나머지 값들 RequestBody 변환
-                                        val partHeight = rawHeight.toPlainPart()
-                                        val partWeight = rawWeight.toPlainPart()
-                                        val partMS     = medicalStatus.toPlainPart()
-                                        val partAddr   = homeAddress.toPlainPart()
-                                        val partLat    = (latLng?.first ?: "0.0").toPlainPart()
-                                        val partLng    = (latLng?.second ?: "0.0").toPlainPart()
-                                        val partRadius = safeRadius.toPlainPart()
+                                        result.onSuccess { successMessage ->
+                                            // 🎉 성공! 토큰과 사용자 정보가 자동으로 저장됨
+                                            Toast.makeText(context, successMessage, Toast.LENGTH_SHORT).show()
 
-                                        // 5) multipart API 호출
-                                        val resp = RetrofitClient.api.signupWardMultipart(
-                                            userId            = userId,
-                                            height            = partHeight,
-                                            weight            = partWeight,
-                                            medicalStatus     = partMS,
-                                            homeAddress       = partAddr,
-                                            safeLat           = partLat,
-                                            safeLng           = partLng,
-                                            safeRadius        = partRadius,
-                                            profileImageFile  = imagePart
-                                        )
-                                        if (!resp.success) throw Exception(resp.message)
+                                            // 🔧 UserRepository로 저장된 데이터 확인 (디버깅용)
+                                            val userRepository = com.project.nolbom.data.repository.UserRepository(context)
+                                            userRepository.logStoredUserData()
 
-                                        // 6) 성공 시 이동
-                                        navController.navigate(Screen.Main.route) {
-                                            popUpTo(Screen.WardSignup.route) { inclusive = true }
+                                            navController.navigate(Screen.Main.route) {
+                                                popUpTo(Screen.WardSignup.route) { inclusive = true }
+                                            }
+                                        }.onFailure { exception ->
+                                            errorMessage = exception.message ?: "회원가입 실패"
+                                            showErrorDialog = true
                                         }
 
                                     } catch (e: Exception) {
@@ -406,7 +404,8 @@ fun WardSignupScreen(
                 ) {
                     if (isLoading) CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
+                        strokeWidth = 2.dp,
+                        color = Color.White
                     ) else Text("시작하기")
                 }
             }
