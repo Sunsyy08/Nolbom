@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.project.nolbom.data.model.ProfileUserData
 import com.project.nolbom.data.repository.ProfileRepository
+import com.project.nolbom.data.local.TokenStore
 
 @Composable
 fun ProfileScreen(
@@ -39,6 +40,10 @@ fun ProfileScreen(
     }
     val uiState by viewModel.uiState.collectAsState()
 
+    // ✅ 화면 진입 시 1회 자동 로드
+    LaunchedEffect(Unit) {
+        viewModel.loadProfile()
+    }
     // 에러 처리
     uiState.error?.let { error ->
         LaunchedEffect(error) {
@@ -160,6 +165,10 @@ fun ProfileContent(
 
 @Composable
 fun ProfileCard(profile: ProfileUserData) {
+    val context = LocalContext.current
+    val isWard = profile.userType == "노약자"
+    val token = TokenStore.getToken()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -172,24 +181,30 @@ fun ProfileCard(profile: ProfileUserData) {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 프로필 이미지
-            if (profile.profileImage != null) {
+            // --- 프로필 이미지 (루트 A) ---
+            if (isWard && !token.isNullOrBlank()) {
+                val request = ImageRequest.Builder(context)
+                    .data("http://127.0.0.1:3000/user/profile-image")
+                    .addHeader("Authorization", "Bearer $token")
+                    .crossfade(true)
+                    .build()
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                    model = request,
+                    contentDescription = "프로필 이미지",
+                    modifier = Modifier.size(96.dp).clip(CircleShape)
+                )
+            } else if (profile.profileImage != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
                         .data(profile.profileImage)
                         .crossfade(true)
                         .build(),
                     contentDescription = "프로필 이미지",
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
+                    modifier = Modifier.size(96.dp).clip(CircleShape)
                 )
             } else {
                 Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFE5E7EB)),
+                    modifier = Modifier.size(96.dp).clip(CircleShape).background(Color(0xFFE5E7EB)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -201,11 +216,11 @@ fun ProfileCard(profile: ProfileUserData) {
                 }
             }
 
+            // --- 여기부터 '이름' 과 '배지' 다시 추가 ---
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 이름
             Text(
-                text = profile.name,
+                text = profile.name.ifBlank { "이름 미등록" }, // 혹시 공백일 경우 대비
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF111827)
@@ -213,11 +228,11 @@ fun ProfileCard(profile: ProfileUserData) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 사용자 타입 배지
             UserTypeBadge(userType = profile.userType)
         }
     }
 }
+
 
 @Composable
 fun ProfileInfoSection(profile: ProfileUserData) {

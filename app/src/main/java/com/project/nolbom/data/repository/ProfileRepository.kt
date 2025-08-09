@@ -1,46 +1,41 @@
-// data/repository/ProfileRepository.kt
 package com.project.nolbom.data.repository
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.util.Log
+import com.project.nolbom.data.local.TokenStore
 import com.project.nolbom.data.model.ProfileUserData
-import com.project.nolbom.data.model.ProfileResponse
 import com.project.nolbom.data.network.RetrofitClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ProfileRepository(private val context: Context) {
     private val apiService = RetrofitClient.api
-    private val sharedPrefs: SharedPreferences =
-        context.getSharedPreferences("eldercare_prefs", Context.MODE_PRIVATE)
 
-    private fun getAuthToken(): String? {
-        // 로그인 토큰이 있으면 사용, 없으면 회원가입 토큰 사용
-        return sharedPrefs.getString("auth_token", null)
-            ?: sharedPrefs.getString("signup_token", null)
-            ?: sharedPrefs.getString("token", null) // 다른 키로 저장된 경우도 고려
-    }
+    private fun getAuthToken(): String? = TokenStore.getToken()  // ✅ TokenStore로 통일
 
     suspend fun getProfile(): Result<ProfileUserData> = withContext(Dispatchers.IO) {
         try {
-            val token = getAuthToken() ?: return@withContext Result.failure(
-                Exception("토큰이 없습니다. 회원가입 또는 로그인이 필요합니다.")
-            )
+            // 인터셉터가 헤더를 붙이지만, 사용자에게 친절한 메시지를 위해 존재 여부만 확인
+            if (getAuthToken().isNullOrBlank()) {
+                return@withContext Result.failure(
+                    Exception("토큰이 없습니다. 회원가입 또는 로그인이 필요합니다.")
+                )
+            }
 
+            // 이 코드 수정, 추가 하니깐 갑자기 됨.
+            val token = TokenStore.getToken() ?: return@withContext Result.failure(Exception("토큰 없음"))
             val response = apiService.getProfile("Bearer $token")
 
-            // 📌 여기서 서버 응답 원문 확인
+
             Log.d("ProfileRepository", "Response raw: ${response.raw()}")
             Log.d("ProfileRepository", "Response body: ${response.body()}")
-            Log.d("ProfileRepository", "Response errorBody: ${response.errorBody()?.string()}")
 
             if (response.isSuccessful) {
-                val profileResponse = response.body()
-                if (profileResponse?.success == true && profileResponse.profile != null) {
-                    Result.success(profileResponse.profile)
+                val body = response.body()
+                if (body?.success == true && body.profile != null) {
+                    Result.success(body.profile)
                 } else {
-                    Result.failure(Exception(profileResponse?.error ?: "프로필 조회 실패"))
+                    Result.failure(Exception(body?.error ?: "프로필 조회 실패"))
                 }
             } else {
                 when (response.code()) {
@@ -54,15 +49,9 @@ class ProfileRepository(private val context: Context) {
         }
     }
 
-    // 토큰이 있는지 확인하는 메서드
-    fun hasValidToken(): Boolean {
-        return getAuthToken() != null
-    }
+    fun hasValidToken(): Boolean = !getAuthToken().isNullOrBlank()
 
-    // 토큰을 저장하는 메서드 (회원가입/로그인 시 사용)
     fun saveToken(token: String) {
-        sharedPrefs.edit()
-            .putString("auth_token", token)
-            .apply()
+        TokenStore.saveToken(token)  // ✅ 저장도 TokenStore로 통일
     }
 }

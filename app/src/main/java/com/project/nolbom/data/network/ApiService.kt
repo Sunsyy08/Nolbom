@@ -75,17 +75,13 @@ interface ApiService {
     ): Response<LoginResponse>
 
     @GET("user/profile")
-    suspend fun getUserProfile(
-        @Header("Authorization") token: String
-    ): Response<ApiResponse<UserProfile>>
+    suspend fun getUserProfile(): Response<ApiResponse<UserProfile>>
 
+    // ApiService: (A 방식 쓰는 중이면 @Header 유지)
     @GET("user/profile-image")
-    suspend fun getProfileImage(
-        @Header("Authorization") token: String
-    ): Response<ResponseBody>
+    suspend fun getProfileImage(@Header("Authorization") auth: String): Response<ResponseBody>
 
-    @GET("/user/full-profile")
-    suspend fun getProfile(
-        @Header("Authorization") token: String
-    ): Response<ProfileResponse>
+
+    @GET("user/full-profile")
+    suspend fun getProfile(@Header("Authorization") auth: String): Response<ProfileResponse>
 }

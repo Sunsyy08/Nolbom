@@ -37,6 +37,7 @@ import androidx.navigation.NavController
 import androidx.compose.material3.*
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.input.VisualTransformation
+import com.project.nolbom.data.local.TokenStore
 import com.project.nolbom.data.model.UserSignupRequest
 import com.project.nolbom.data.network.RetrofitClient
 import kotlinx.coroutines.launch
@@ -173,6 +174,7 @@ fun SignUpScreen(navController: NavController) {
                                     password = password
                                 )
                                 val resp = RetrofitClient.api.signup(req)
+                                TokenStore.saveToken(resp.token)
                                 if (!resp.success) {
                                     throw Exception("회원가입에 실패했습니다")
                                 } // 생성된 유저 ID를 꺼내서

@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val profile: ProfileUserData? = null, // 🔧 UserProfile → ProfileUserData 변경
     val error: String? = null
 )
