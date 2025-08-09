@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Nolbom</string>
+
+    <!-- API 키들 (실제 키로 교체하세요) -->
+    <string name="kakao_native_app_key">43dc42fa64bbd715fef5f7cffc8cceda</string>
+    <string name="google_maps_api_key">AIzaSyDQQGSIvGXmPAUUDX4AsMuBsjKVkCQUagg</string>
 </resources>

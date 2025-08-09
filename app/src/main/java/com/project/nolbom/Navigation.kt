@@ -61,6 +61,9 @@ fun NolbomNavHost(navController: NavHostController) {
         composable(Screen.Profile.route) {
             ProfileScreen(navController = navController) // ← 필요 시 파라미터 맞춰주세요
         }
+        composable(Screen.FullMapp.route){
+            FullScreenMapScreen(navController = navController)
+        }
         composable(Screen.AlertList.route) {
             AlertListScreen()
         }

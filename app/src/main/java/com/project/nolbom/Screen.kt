@@ -16,4 +16,5 @@ sealed class Screen(val route: String) {
         fun createRoute(userId: Long) = "signup/guardian/$userId"
     }
     object Profile : Screen("profile")
+    object FullMapp : Screen("fullmap")
 }

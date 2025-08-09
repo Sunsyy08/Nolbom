@@ -23,6 +23,14 @@ android {
             "KAKAO_REST_API_KEY",
             "\"${project.property("KAKAO_REST_API_KEY") as String}\""
         )
+        // 카카오 네이티브 앱 키도 추가 (지도용)
+        buildConfigField(
+            "String",
+            "KAKAO_NATIVE_APP_KEY",
+            "\"${project.property("KAKAO_NATIVE_APP_KEY") as String}\""
+        )
+        // strings.xml에 API 키 자동 추가
+        resValue("string", "kakao_native_app_key", project.property("KAKAO_NATIVE_APP_KEY") as String)
     }
 
     buildTypes {
@@ -50,6 +58,17 @@ android {
 dependencies {
 
 
+    implementation("com.kakao.maps.open:android:2.9.5")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+    // Socket.IO 클라이언트 (⭐ 새로 추가)
+    implementation("io.socket:socket.io-client:2.0.1")
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.activity:activity-compose:1.8.0")
+    // 위치 서비스 (기존과 동일)
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    // 권한 처리
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
     // build.gradle.kts에 추가
     implementation("io.coil-kt:coil-compose:2.4.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")

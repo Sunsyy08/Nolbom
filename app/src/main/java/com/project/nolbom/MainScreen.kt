@@ -26,18 +26,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MailOutline
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.Surface
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -51,20 +41,21 @@ import com.google.accompanist.flowlayout.FlowRow
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.navigation.NavHostController
 
-// 올바른 import 경로들
+// 위치 추적 관련 imports
+import com.google.accompanist.permissions.*
+import com.project.nolbom.data.location.LocationManager
+import com.project.nolbom.data.network.UserLocationInfo
+import com.project.nolbom.map.KakaoMapView
 import com.project.nolbom.data.model.UserProfile
 import com.project.nolbom.data.repository.UserRepository
 
 // 전화 앱 실행을 위한 함수
 fun openPhoneApp(context: Context) {
     try {
-        // 전화 다이얼러를 열기 (번호 입력 화면)
         val intent = Intent(Intent.ACTION_DIAL)
         context.startActivity(intent)
     } catch (e: Exception) {
@@ -72,7 +63,6 @@ fun openPhoneApp(context: Context) {
     }
 }
 
-// 특정 번호로 전화를 거는 함수 (옵션)
 fun callPhoneNumber(context: Context, phoneNumber: String) {
     try {
         val intent = Intent(Intent.ACTION_DIAL).apply {
@@ -91,25 +81,49 @@ fun loadUsersFromAssets(context: Context): List<AlertUser> {
     return gson.fromJson(jsonString, type)
 }
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreen(
     navController: NavHostController,
     onNavigateToAlertList: () -> Unit
-
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    // ViewModel 생성을 정확한 Composable 문맥에서 실행
-    val viewModel: MainViewModel = viewModel {
+    // 기존 ViewModel
+    val mainViewModel: MainViewModel = viewModel {
         MainViewModel(UserRepository(context))
     }
+    val uiState by mainViewModel.uiState.collectAsState()
 
-    val uiState by viewModel.uiState.collectAsState()
+    // 위치 추적 ViewModel 추가
+    val locationManager = remember { LocationManager(context) }
+    val locationViewModel = remember {
+        LocationViewModel(
+            locationManager = locationManager,
+            serverUrl = "http://127.0.0.1:3000" // 실제 서버 IP로 변경
+        )
+    }
+    val locationState by locationViewModel.locationState.collectAsState()
+
+    // 위치 권한 상태
+    val locationPermissions = rememberMultiplePermissionsState(
+        permissions = listOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    )
 
     // JSON에서 사용자 리스트 읽기
     val userList = remember {
         loadUsersFromAssets(context)
+    }
+
+    // 권한이 허용되면 마지막 위치 가져오기
+    androidx.compose.runtime.LaunchedEffect(locationPermissions.allPermissionsGranted) {
+        if (locationPermissions.allPermissionsGranted) {
+            locationViewModel.getLastKnownLocation()
+        }
     }
 
     Column(
@@ -152,7 +166,7 @@ fun MainScreen(
 
                     Row {
                         Button(
-                            onClick = { viewModel.retryLoadProfile() },
+                            onClick = { mainViewModel.retryLoadProfile() },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF83E3BD))
                         ) {
                             Text("다시 시도")
@@ -160,9 +174,8 @@ fun MainScreen(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // 🆕 테스트용 데이터 초기화 버튼
                         Button(
-                            onClick = { viewModel.clearUserData() },
+                            onClick = { mainViewModel.clearUserData() },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722))
                         ) {
                             Text("데이터 초기화")
@@ -172,7 +185,7 @@ fun MainScreen(
             }
         }
 
-        // 상단 프로필 헤더 (실제 데이터 사용)
+        // 상단 프로필 헤더
         ProfileHeaderWithData(
             userProfile = uiState.userProfile,
             profileBitmap = uiState.profileBitmap
@@ -180,13 +193,32 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 중간 영역: 왼쪽 리스트, 오른쪽 지도
+        // 위치 연결 상태 표시 카드
+        LocationConnectionCard(
+            isConnected = locationState.isConnectedToServer,
+            totalUsers = locationState.totalUsersCount,
+            isTracking = locationState.isTracking,
+            currentUserName = locationState.userName,
+            onStartTracking = {
+                if (locationPermissions.allPermissionsGranted) {
+                    locationViewModel.startLocationUpdates()
+                } else {
+                    locationPermissions.launchMultiplePermissionRequest()
+                }
+            },
+            onStopTracking = { locationViewModel.stopLocationUpdates() }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 중간 영역: 왼쪽 리스트, 오른쪽 카카오맵
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .height(400.dp)
         ) {
+            // 왼쪽: 사용자 리스트
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -206,27 +238,89 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            // 오른쪽: 카카오맵 (클릭하면 전체화면으로)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(24.dp))
+                    .clickable {
+                        // 전체화면 지도로 네비게이션
+                        navController.navigate("fullmap")
+                    }
             ) {
-                MiniMapView(
-                    modifier = Modifier.fillMaxSize()
-                )
+                if (locationPermissions.allPermissionsGranted) {
+                    KakaoMapView(
+                        currentLocation = locationState.currentLocation,
+                        locationHistory = locationState.locationHistory,
+                        otherUsers = locationState.otherUsers,
+                        modifier = Modifier.fillMaxSize()
+                    ) { kakaoMap ->
+                        // 미니맵이므로 기본 설정만
+                    }
+                } else {
+                    // 권한 없을 때 표시
+                    LocationPermissionRequest(
+                        onRequestPermission = {
+                            locationPermissions.launchMultiplePermissionRequest()
+                        }
+                    )
+                }
+
+                // 클릭 안내 오버레이
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White.copy(alpha = 0.9f)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ZoomOutMap,
+                                contentDescription = "전체화면",
+                                tint = Color(0xFF83E3BD),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "📍 지도 보기",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "터치하면 전체화면",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // 액션 카드 섹션 (기존 유지)
         ActionCardSection(onNavigateToAlertList)
+
         Spacer(modifier = Modifier.weight(1f))
-        // 전화 앱 실행 함수를 전달
+
+        // 하단 탭바 (기존 유지)
         BottomTabBar(
             onPhoneClick = { openPhoneApp(context) },
             onTabSelected = { tab ->
                 when (tab) {
-                    TabItem.Profile -> navController.navigate(Screen.Profile.route) // ← 프로필 이동
+                    TabItem.Profile -> navController.navigate("profile") // Screen.Profile.route 대신
                     else -> { /* 다른 탭 동작 */ }
                 }
             }
@@ -234,7 +328,122 @@ fun MainScreen(
     }
 }
 
-// 실제 데이터를 사용하는 프로필 헤더
+// 위치 연결 상태를 보여주는 카드
+@Composable
+fun LocationConnectionCard(
+    isConnected: Boolean,
+    totalUsers: Int,
+    isTracking: Boolean,
+    currentUserName: String,
+    onStartTracking: () -> Unit,
+    onStopTracking: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isConnected) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFFFF9800).copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (isConnected) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+                contentDescription = "연결 상태",
+                tint = if (isConnected) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isConnected) "🟢 실시간 위치 공유 중" else "🟡 위치 공유 준비 중",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (isConnected) "$currentUserName • 총 $totalUsers 명 접속" else "서버 연결을 확인해주세요",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+
+            // 추적 시작/중지 버튼
+            Button(
+                onClick = if (isTracking) onStopTracking else onStartTracking,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isTracking) Color(0xFFFF5722) else Color(0xFF83E3BD)
+                ),
+                modifier = Modifier.height(36.dp)
+            ) {
+                Icon(
+                    imageVector = if (isTracking) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (isTracking) "중지" else "시작",
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+// 위치 권한 요청 컴포넌트
+@Composable
+fun LocationPermissionRequest(
+    onRequestPermission: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Gray.copy(alpha = 0.3f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LocationOff,
+                    contentDescription = "위치 권한 필요",
+                    tint = Color.Gray,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "위치 권한이\n필요합니다",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onRequestPermission,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF83E3BD)
+                    )
+                ) {
+                    Text("권한 허용", fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+// 기존 함수들 유지 (ProfileHeaderWithData, AlertCardSmall, ActionCardSection, etc.)
 @Composable
 fun ProfileHeaderWithData(
     userProfile: UserProfile?,
@@ -245,7 +454,6 @@ fun ProfileHeaderWithData(
         modifier = Modifier
             .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
-        // 프로필 이미지 (실제 데이터 또는 기본 이미지)
         if (profileBitmap != null) {
             Image(
                 bitmap = profileBitmap.asImageBitmap(),
@@ -268,7 +476,6 @@ fun ProfileHeaderWithData(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // 사용자 이름 + 주소 (실제 데이터 또는 기본값)
         Column(
             verticalArrangement = Arrangement.Center
         ) {
@@ -279,39 +486,6 @@ fun ProfileHeaderWithData(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = userProfile?.home_address ?: "주소 정보 없음",
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 20.sp)
-            )
-        }
-    }
-}
-
-@Composable
-fun ProfileHeader(userName: String, userRegion: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(horizontal = 24.dp, vertical = 16.dp)
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.profile),
-            contentDescription = "프로필 이미지",
-            modifier = Modifier
-                .size(70.dp)
-                .clip(CircleShape)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = userName,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 30.sp)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = userRegion,
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 20.sp)
             )
         }
@@ -394,7 +568,9 @@ fun ActionCardSection(onNavigateToAlertList: () -> Unit) {
             ActionCard(
                 title = "위치 보기",
                 icon = Icons.Default.LocationOn,
-                modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
+                modifier = Modifier.weight(1f).padding(horizontal = 4.dp).clickable {
+                    // 전체화면 지도로 이동하는 기능 추가 가능
+                }
             )
             ActionCard(
                 title = "안내 문자",
@@ -439,7 +615,7 @@ fun BottomTabBar(
     modifier: Modifier = Modifier,
     onTabSelected: (TabItem) -> Unit = {},
     selectedTab: TabItem = TabItem.Home,
-    onPhoneClick: () -> Unit = {} // 전화 클릭 콜백 추가
+    onPhoneClick: () -> Unit = {}
 ) {
     val tabs = listOf(
         TabItem.Profile,
@@ -470,7 +646,7 @@ fun BottomTabBar(
                     isSelected = tab == selectedTab,
                     onClick = {
                         if (tab == TabItem.Call) {
-                            onPhoneClick() // 전화 탭 클릭시 전화 앱 실행
+                            onPhoneClick()
                         } else {
                             onTabSelected(tab)
                         }
