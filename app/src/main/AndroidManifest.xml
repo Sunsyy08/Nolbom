@@ -47,6 +47,10 @@
         <meta-data
             android:name="com.kakao.sdk.AppKey"
             android:value="43dc42fa64bbd715fef5f7cffc8cceda" />
+        <!-- 카카오맵 전용 앱 키 (Vector Map용) -->
+        <meta-data
+            android:name="com.kakao.vectormap.APP_KEY"
+            android:value="43dc42fa64bbd715fef5f7cffc8cceda" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
