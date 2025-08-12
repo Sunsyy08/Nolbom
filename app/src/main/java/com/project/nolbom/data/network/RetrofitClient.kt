@@ -1,4 +1,4 @@
-// data/network/RetrofitClient.kt
+// data/network/RetrofitClient.kt - 기존 코드에 STT API만 추가
 package com.project.nolbom.data.network
 
 import com.project.nolbom.data.local.TokenStore
@@ -9,19 +9,22 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import com.project.nolbom.data.network.RetrofitClient
-
+import kotlin.jvm.java
 
 object RetrofitClient {
+    // 기존 Node.js API
     private const val BASE_URL = "http://127.0.0.1:3000/"
-  //  http://localhost:3000/
+
+    // 🆕 Python STT API URL 추가
+    private const val STT_BASE_URL = "http://127.0.0.1:8000/"
 
     private val logging = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
-    // 토큰 저장소에서 토큰 꺼내오기 (SharedPreferences나 DataStore에서 구현)
+
+    // 토큰 저장소에서 토큰 꺼내오기 (기존 코드 유지)
     private val tokenProvider: () -> String? = {
-        TokenStore.getToken() // 여기를 네가 쓰는 저장소 코드로 교체
+        TokenStore.getToken()
     }
 
     private val client = OkHttpClient.Builder()
@@ -32,10 +35,19 @@ object RetrofitClient {
         .add(KotlinJsonAdapterFactory())
         .build()
 
+    // 기존 Node.js API (기존 코드 그대로 유지)
     val api: ApiService = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(client)
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
         .create(ApiService::class.java)
+
+    // 🆕 Python STT API만 추가
+    val sttApi: STTApiService = Retrofit.Builder()
+        .baseUrl(STT_BASE_URL)
+        .client(client)
+        .addConverterFactory(MoshiConverterFactory.create(moshi))
+        .build()
+        .create(STTApiService::class.java)
 }

@@ -32,6 +32,8 @@ import com.project.nolbom.R
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavHostController
+import com.project.nolbom.data.repository.STTRepository
+import com.project.nolbom.data.local.TokenStore
 
 @Composable
 fun SignUpExtraScreen(
@@ -49,6 +51,9 @@ fun SignUpExtraScreen(
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var successMessage by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -199,6 +204,7 @@ fun SignUpExtraScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 다음 버튼
+            // 3. 기존 Button의 onClick 부분을 이것으로 완전히 교체:
             Button(
                 onClick = {
                     when {
@@ -222,6 +228,7 @@ fun SignUpExtraScreen(
                             isLoading = true
                             scope.launch {
                                 try {
+                                    // 1. 추가 정보 저장
                                     val req = SignupExtraRequest(
                                         birthdate = birthState.text,
                                         phone     = phoneState.text,
@@ -231,18 +238,43 @@ fun SignUpExtraScreen(
                                     val resp = RetrofitClient.api.signupExtra(userId, req)
                                     if (!resp.success) throw Exception(resp.message)
 
-                                    // role 에 따라 각각의 화면으로 이동, 이전 스택(SignUpExtra) 제거
-                                    if (role == "ward") {
-                                        navController.navigate(Screen.WardSignup.createRoute(userId)) {
-                                            popUpTo(Screen.SignUpExtra.route) { inclusive = true }
-                                        }
+                                    // 2. 업데이트된 토큰 저장
+                                    if (!resp.token.isNullOrEmpty()) {
+                                        TokenStore.saveToken(resp.token)
                                     } else {
-                                        navController.navigate(Screen.GuardianSignup.createRoute(userId)) {
-                                            popUpTo(Screen.SignUpExtra.route) { inclusive = true }
-                                        }
+                                        throw Exception("토큰을 받지 못했습니다")
                                     }
+
+                                    // 🆕 3. STT 자동 활성화 시도
+                                    var sttActivationMessage = ""
+                                    try {
+                                        val sttRepository = STTRepository()
+                                        val sttResult = sttRepository.activateSTT(enable = true)
+
+                                        sttResult.fold(
+                                            onSuccess = { sttResponse ->
+                                                if (sttResponse.success) {
+                                                    sttActivationMessage = "\n🎤 음성 모니터링이 활성화되었습니다!"
+                                                } else {
+                                                    sttActivationMessage = "\n음성 모니터링은 메인 화면에서 수동으로 활성화해주세요."
+                                                }
+                                            },
+                                            onFailure = {
+                                                sttActivationMessage = "\n음성 모니터링은 메인 화면에서 활성화해주세요."
+                                                println("STT 활성화 실패: ${it.message}")
+                                            }
+                                        )
+                                    } catch (sttError: Exception) {
+                                        sttActivationMessage = "\n음성 모니터링은 메인 화면에서 활성화해주세요."
+                                        println("STT 활성화 중 오류: ${sttError.message}")
+                                    }
+
+                                    // 4. 성공 메시지와 함께 성공 다이얼로그 표시
+                                    successMessage = "회원가입이 완료되었습니다!$sttActivationMessage"
+                                    showSuccessDialog = true
+
                                 } catch (e: Exception) {
-                                    errorMessage    = e.localizedMessage ?: "추가 정보 저장에 실패했습니다"
+                                    errorMessage = e.localizedMessage ?: "추가 정보 저장에 실패했습니다"
                                     showErrorDialog = true
                                 } finally {
                                     isLoading = false
@@ -260,14 +292,60 @@ fun SignUpExtraScreen(
                     .padding(top = 20.dp)
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        Text("처리 중...", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 } else {
-                    Text("다음", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("가입 완료", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+            }
+
+// 4. 기존 에러 다이얼로그 아래에 성공 다이얼로그 추가:
+// 🆕 성공 다이얼로그
+            if (showSuccessDialog) {
+                AlertDialog(
+                    onDismissRequest = {},  // 버튼으로만 닫기
+                    title = {
+                        Text(
+                            "가입 완료!",
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = { Text(successMessage) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showSuccessDialog = false
+                                // role에 따라 다음 화면으로 이동
+                                if (role == "ward") {
+                                    navController.navigate(Screen.WardSignup.createRoute(userId)) {
+                                        popUpTo(Screen.SignUpExtra.route) { inclusive = true }
+                                    }
+                                } else if (role == "guardian") {
+                                    navController.navigate(Screen.GuardianSignup.createRoute(userId)) {
+                                        popUpTo(Screen.SignUpExtra.route) { inclusive = true }
+                                    }
+                                } else {
+                                    // 메인 화면으로 이동 (추후 구현)
+                                    navController.navigate("main") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            }
+                        ) {
+                            Text("확인", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
             }
         }
     }
