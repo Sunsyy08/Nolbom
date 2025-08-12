@@ -1,4 +1,4 @@
-// data/network/RetrofitClient.kt - 기존 코드에 STT API만 추가
+// data/network/RetrofitClient.kt - 올바른 IP 설정
 package com.project.nolbom.data.network
 
 import com.project.nolbom.data.local.TokenStore
@@ -9,20 +9,25 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import kotlin.jvm.java
 
 object RetrofitClient {
-    // 기존 Node.js API
-    private const val BASE_URL = "http://127.0.0.1:3000/"
+    // 🔧 실제 네트워크 IP 사용
+    private const val PC_IP = "10.183.172.236"
 
-    // 🆕 Python STT API URL 추가
-    private const val STT_BASE_URL = "http://127.0.0.1:8000/"
+    private const val BASE_URL = "http://$PC_IP:3000/"
+    private const val STT_BASE_URL = "http://$PC_IP:8000/"
+
+    init {
+        println("🔍 네트워크 설정:")
+        println("🔍 PC IP: $PC_IP")
+        println("🔍 Node.js: $BASE_URL")
+        println("🔍 Python STT: $STT_BASE_URL")
+    }
 
     private val logging = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    // 토큰 저장소에서 토큰 꺼내오기 (기존 코드 유지)
     private val tokenProvider: () -> String? = {
         TokenStore.getToken()
     }
@@ -35,7 +40,6 @@ object RetrofitClient {
         .add(KotlinJsonAdapterFactory())
         .build()
 
-    // 기존 Node.js API (기존 코드 그대로 유지)
     val api: ApiService = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(client)
@@ -43,7 +47,6 @@ object RetrofitClient {
         .build()
         .create(ApiService::class.java)
 
-    // 🆕 Python STT API만 추가
     val sttApi: STTApiService = Retrofit.Builder()
         .baseUrl(STT_BASE_URL)
         .client(client)

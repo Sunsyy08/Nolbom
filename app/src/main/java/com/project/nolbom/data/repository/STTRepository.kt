@@ -12,22 +12,35 @@ class STTRepository {
     /**
      * STT 활성화/비활성화
      */
+    // STTRepository.kt - activateSTT 함수만 수정
     suspend fun activateSTT(enable: Boolean): Result<STTActivationResponse> {
         return try {
             val token = TokenStore.getToken()
-            if (token.isNullOrEmpty()) {  // 🔧 null 안전성 추가
+            println("🔍 STT 활성화 시도 - 토큰: ${token?.take(20)}...")
+
+            if (token.isNullOrEmpty()) {
+                println("❌ 토큰이 없음")
                 return Result.failure(Exception("토큰이 없습니다. 다시 로그인해주세요."))
             }
 
             val request = STTActivationRequest(enable = enable)
+            println("🔍 STT API 호출 시작 - enable: $enable")
+
             val response = RetrofitClient.sttApi.activateSTT("Bearer $token", request)
+            println("🔍 STT API 응답 - 코드: ${response.code()}, 성공: ${response.isSuccessful}")
 
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val body = response.body()!!
+                println("✅ STT 활성화 성공 - 응답: $body")
+                Result.success(body)
             } else {
+                val errorBody = response.errorBody()?.string()
+                println("❌ STT 활성화 실패 - 에러: $errorBody")
                 Result.failure(Exception("STT 활성화 실패: ${response.message()}"))
             }
         } catch (e: Exception) {
+            println("❌ STT 활성화 예외 - ${e.javaClass.simpleName}: ${e.message}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }
