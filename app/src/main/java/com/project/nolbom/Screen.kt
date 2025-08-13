@@ -17,4 +17,5 @@ sealed class Screen(val route: String) {
     }
     object Profile : Screen("profile")
     object FullMapp : Screen("fullmap")
+    object VoiceTest : Screen("voice_test")
 }
