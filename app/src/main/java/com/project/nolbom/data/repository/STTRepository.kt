@@ -156,4 +156,64 @@ class STTRepository {
             Result.failure(e)
         }
     }
+
+    /**
+     * 음성 데이터를 서버로 전송하여 인식
+     */
+    suspend fun recognizeVoice(audioBase64: String): Result<VoiceRecognitionResponse> {
+        return try {
+            val token = TokenStore.getToken()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("토큰이 없습니다."))
+            }
+
+            val request = VoiceRecognitionRequest(
+                audioData = audioBase64,
+                sampleRate = 16000
+            )
+
+            println("🔍 음성 데이터 전송 중... (${audioBase64.length} 문자)")
+
+            val response = RetrofitClient.sttApi.recognizeVoice("Bearer $token", request)
+
+            if (response.isSuccessful && response.body() != null) {
+                val result = response.body()!!
+                println("✅ 음성 인식 성공: ${result.transcript}")
+                if (result.keywordDetected) {
+                    println("🚨 키워드 감지됨!")
+                }
+                Result.success(result)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                println("❌ 음성 인식 실패: $errorBody")
+                Result.failure(Exception("음성 인식 실패: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            println("❌ 음성 인식 예외: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 연속 음성 인식 시작
+     */
+    suspend fun startContinuousVoice(): Result<ContinuousVoiceResponse> {
+        return try {
+            val token = TokenStore.getToken()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("토큰이 없습니다."))
+            }
+
+            val response = RetrofitClient.sttApi.startContinuousRecognition("Bearer $token")
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("연속 음성 인식 시작 실패: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

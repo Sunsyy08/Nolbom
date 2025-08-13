@@ -15,6 +15,14 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- 마이크 하드웨어 요구사항 -->
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="true" />
+
     <application
         android:allowBackup="true"
         android:networkSecurityConfig="@xml/network_security_config"
