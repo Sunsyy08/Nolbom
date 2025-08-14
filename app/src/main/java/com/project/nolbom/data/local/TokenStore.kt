@@ -27,10 +27,13 @@ object TokenStore {
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
     // 🔥 combined_server용 토큰 생성 함수 추가
+    // 🔧 generateToken 함수를 다음과 같이 수정:
+    // 🔧 generateToken 함수를 완전히 간단하게 수정:
     fun generateToken(userId: String): String {
-        val timestamp = System.currentTimeMillis()
-        return "user_${userId}_${timestamp}"
+        val randomId = (1000..9999).random()
+        return "user_${randomId}_${System.currentTimeMillis()}"
     }
+
 
     // 사용자 정보 저장 (기존 코드에서 토큰 자동 생성 추가)
     fun saveUserInfo(
