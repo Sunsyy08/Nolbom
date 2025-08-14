@@ -36,12 +36,20 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.google.accompanist.flowlayout.FlowRow
+import com.project.nolbom.data.repository.STTRepository
+import com.project.nolbom.data.local.TokenStore
+import com.project.nolbom.utils.VoiceRecorder
+import com.project.nolbom.utils.RequestAudioPermission
+import com.project.nolbom.utils.hasAudioPermission
 
 // API 연동을 위한 추가 imports
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.graphics.Bitmap
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.navigation.NavHostController
 
@@ -87,6 +95,8 @@ fun MainScreen(
     navController: NavHostController,
     onNavigateToAlertList: () -> Unit
 ) {
+
+
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
@@ -126,6 +136,23 @@ fun MainScreen(
         }
     }
 
+    // 🔥 STT 관련 변수 추가
+    val messages by mainViewModel.messages.collectAsState()
+    var showSignupDialog by remember { mutableStateOf(false) }
+    var userName by remember { mutableStateOf("") }
+    var userPhone by remember { mutableStateOf("01044573420") }
+
+    // 🔥 VoiceRecorder 초기화 및 STT 확인
+    LaunchedEffect(Unit) {
+        mainViewModel.initVoiceRecorder(context)
+        if (!mainViewModel.isUserRegistered()) {
+            showSignupDialog = true
+        } else {
+            mainViewModel.checkServerHealth()
+            mainViewModel.activateSTTIfNeeded()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -140,6 +167,45 @@ fun MainScreen(
                 color = Color(0xFF83E3BD)
             )
         }
+
+        // 🔥 STT 상태 헤더 추가
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = when {
+                    !uiState.userRegistered -> Color(0xFFFF9800)
+                    !uiState.serverConnected -> Color(0xFFF44336)
+                    uiState.isSTTActive -> Color(0xFF4CAF50)
+                    else -> Color(0xFF2196F3)
+                }
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "🎤 음성 응급 감지",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    text = when {
+                        !uiState.userRegistered -> "회원가입 필요"
+                        !uiState.serverConnected -> "서버 연결 안됨"
+                        uiState.isSTTActive -> "활성화됨"
+                        else -> "비활성화됨"
+                    },
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // 에러 상태 표시
         uiState.error?.let { error ->
@@ -192,6 +258,107 @@ fun MainScreen(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // 🔥 STT 컨트롤 카드 추가
+        if (uiState.userRegistered) {
+            RequestAudioPermission(
+                onPermissionGranted = { mainViewModel.addMessage("✅ 마이크 권한 승인됨") },
+                onPermissionDenied = { mainViewModel.addMessage("❌ 마이크 권한이 필요합니다") }
+            ) { requestPermission ->
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 음성 인식 버튼
+                        Card(
+                            modifier = Modifier
+                                .size(60.dp)
+                                .clickable(enabled = uiState.isSTTActive && !uiState.isRecording) {
+                                    if (hasAudioPermission(context)) {
+                                        mainViewModel.startVoiceRecognition()
+                                    } else {
+                                        requestPermission()
+                                    }
+                                },
+                            shape = CircleShape,
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (uiState.isRecording) Color(0xFFFF5722) else Color(0xFF4CAF50)
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (uiState.isRecording) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = Color.White
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Default.Mic,
+                                        contentDescription = "음성 인식",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (uiState.isSTTActive) "음성 감지 활성화됨" else "음성 감지 비활성화됨",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            if (uiState.lastTranscript.isNotEmpty()) {
+                                Text(
+                                    text = "최근: ${uiState.lastTranscript}",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        // STT 시작/중지 버튼
+                        Button(
+                            onClick = {
+                                if (hasAudioPermission(context)) {
+                                    mainViewModel.activateSTT()
+                                } else {
+                                    requestPermission()
+                                }
+                            },
+                            modifier = Modifier.height(32.dp),
+                            enabled = !uiState.isLoading,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF83E3BD)
+                            )
+                        ) {
+                            if (uiState.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(12.dp))
+                            } else {
+                                Text(
+                                    text = if (uiState.isSTTActive) "재시작" else "시작",
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         // 위치 연결 상태 표시 카드
         LocationConnectionCard(
@@ -322,6 +489,48 @@ fun MainScreen(
                 when (tab) {
                     TabItem.Profile -> navController.navigate("profile") // Screen.Profile.route 대신
                     else -> { /* 다른 탭 동작 */ }
+                }
+            }
+        )
+    }
+    // 🔥 여기에 STT 회원가입 다이얼로그 추가
+    if (showSignupDialog) {
+        AlertDialog(
+            onDismissRequest = { /* 회원가입 필수 */ },
+            title = { Text("음성 응급 감지 설정") },
+            text = {
+                Column {
+                    Text("음성으로 응급상황을 감지하기 위해 정보를 입력해주세요.")
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = userName,
+                        onValueChange = { userName = it },
+                        label = { Text("이름") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = userPhone,
+                        onValueChange = { userPhone = it },
+                        label = { Text("응급 연락처") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (userName.isNotBlank() && userPhone.isNotBlank()) {
+                            mainViewModel.registerUser(userName, userPhone)
+                            showSignupDialog = false
+                        }
+                    },
+                    enabled = userName.isNotBlank() && userPhone.isNotBlank()
+                ) {
+                    Text("설정 완료")
                 }
             }
         )

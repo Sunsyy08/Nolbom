@@ -1,3 +1,4 @@
+// data/local/TokenStore.kt - generateToken 함수 추가
 package com.project.nolbom.data.local
 
 import android.content.Context
@@ -6,8 +7,6 @@ import android.content.SharedPreferences
 object TokenStore {
     private const val PREF = "app_prefs"
     private const val KEY_TOKEN = "jwt_token"
-
-    // 🔥 사용자 정보 키들 추가
     private const val KEY_USER_ID = "user_id"
     private const val KEY_USER_NAME = "user_name"
     private const val KEY_USER_PHONE = "user_phone"
@@ -27,7 +26,13 @@ object TokenStore {
 
     fun getToken(): String? = prefs.getString(KEY_TOKEN, null)
 
-    // 🔥 사용자 정보 저장 (회원가입/로그인 시 호출)
+    // 🔥 combined_server용 토큰 생성 함수 추가
+    fun generateToken(userId: String): String {
+        val timestamp = System.currentTimeMillis()
+        return "user_${userId}_${timestamp}"
+    }
+
+    // 사용자 정보 저장 (기존 코드에서 토큰 자동 생성 추가)
     fun saveUserInfo(
         userId: String,
         userName: String,
@@ -41,12 +46,16 @@ object TokenStore {
             putString(KEY_USER_PHONE, userPhone)
             putString(KEY_USER_EMAIL, userEmail)
             putBoolean(KEY_IS_LOGGED_IN, true)
-            token?.let { putString(KEY_TOKEN, it) }
+
+            // 🔥 토큰이 없으면 자동 생성
+            val finalToken = token ?: generateToken(userId)
+            putString(KEY_TOKEN, finalToken)
+
             apply()
         }
     }
 
-    // 사용자 정보 가져오기
+    // 기존 함수들 유지
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
 
     fun getUserName(): String? = prefs.getString(KEY_USER_NAME, null)
