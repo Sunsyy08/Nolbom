@@ -11,7 +11,7 @@ import com.project.nolbom.ui.signup.SignUpExtraScreen
 
 @Composable
 fun NolbomNavHost(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = Screen.VoiceTest.route) {
+    NavHost(navController = navController, startDestination = Screen.Start.route) {
 
         composable(Screen.Start.route) {
             StartScreen(navController = navController)

@@ -12,7 +12,6 @@ class STTRepository {
     /**
      * STT 활성화/비활성화
      */
-    // STTRepository.kt - activateSTT 함수만 수정
     suspend fun activateSTT(enable: Boolean): Result<STTActivationResponse> {
         return try {
             val token = TokenStore.getToken()
@@ -51,7 +50,7 @@ class STTRepository {
     suspend fun getSTTStatus(): Result<STTStatusResponse> {
         return try {
             val token = TokenStore.getToken()
-            if (token.isNullOrEmpty()) {  // 🔧 null 안전성 추가
+            if (token.isNullOrEmpty()) {
                 return Result.failure(Exception("토큰이 없습니다."))
             }
 
@@ -102,11 +101,16 @@ class STTRepository {
     }
 
     /**
-     * 수동 긴급 SMS 전송
+     * 🔧 수동 긴급 SMS 전송 - EmergencyResponse 사용
      */
-    suspend fun sendEmergencySMS(): Result<SMSResponse> {
+    suspend fun sendEmergencySMS(): Result<EmergencyResponse> {
         return try {
-            val response = RetrofitClient.sttApi.sendEmergencySMS()
+            val token = TokenStore.getToken()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("토큰이 없습니다."))
+            }
+
+            val response = RetrofitClient.sttApi.sendEmergencySMS("Bearer $token")
 
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -141,23 +145,6 @@ class STTRepository {
     }
 
     /**
-     * 활성 사용자 목록 조회
-     */
-    suspend fun getActiveUsers(): Result<ActiveUsersResponse> {
-        return try {
-            val response = RetrofitClient.sttApi.getActiveUsers()
-
-            if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
-            } else {
-                Result.failure(Exception("활성 사용자 조회 실패: ${response.message()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
      * 음성 데이터를 서버로 전송하여 인식
      */
     suspend fun recognizeVoice(audioBase64: String): Result<VoiceRecognitionResponse> {
@@ -169,7 +156,8 @@ class STTRepository {
 
             val request = VoiceRecognitionRequest(
                 audioData = audioBase64,
-                sampleRate = 16000
+                sampleRate = 16000,
+                userId = TokenStore.getUserId()?.hashCode()
             )
 
             println("🔍 음성 데이터 전송 중... (${audioBase64.length} 문자)")
@@ -211,6 +199,23 @@ class STTRepository {
                 Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("연속 음성 인식 시작 실패: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 🔧 활성 사용자 목록 조회 - EmergencyResponse 대신 적절한 타입 사용
+     */
+    suspend fun getActiveUsers(): Result<STTStatusResponse> {
+        return try {
+            val response = RetrofitClient.sttApi.getMonitoringStatus()
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("활성 사용자 조회 실패: ${response.message()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
