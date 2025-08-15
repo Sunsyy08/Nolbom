@@ -269,92 +269,139 @@ fun MainScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (uiState.isSTTActive) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFFFFEB3B).copy(alpha = 0.1f)
+                    )
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 음성 인식 버튼
-                        Card(
-                            modifier = Modifier
-                                .size(60.dp)
-                                .clickable(enabled = uiState.isSTTActive && !uiState.isRecording) {
-                                    if (hasAudioPermission(context)) {
-                                        mainViewModel.startVoiceRecognition()
-                                    } else {
-                                        requestPermission()
-                                    }
-                                },
-                            shape = CircleShape,
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (uiState.isRecording) Color(0xFFFF5722) else Color(0xFF4CAF50)
-                            )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (uiState.isRecording) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        color = Color.White
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.Default.Mic,
-                                        contentDescription = "음성 인식",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (uiState.isSTTActive) "음성 감지 활성화됨" else "음성 감지 비활성화됨",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            if (uiState.lastTranscript.isNotEmpty()) {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "최근: ${uiState.lastTranscript}",
+                                    text = if (uiState.isSTTActive) "🎤 실시간 음성 감지 중" else "🔇 음성 감지 꺼짐",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (uiState.isSTTActive) Color(0xFF4CAF50) else Color(0xFF757575)
+                                )
+                                Text(
+                                    text = if (uiState.isSTTActive) "화면이 꺼져도 계속 작동 중입니다" else "음성 감지가 비활성화되어 있습니다",
                                     fontSize = 12.sp,
-                                    color = Color.Gray,
-                                    maxLines = 1
+                                    color = Color.Gray
                                 )
+
+                                // 마지막 인식 결과 표시
+                                if (uiState.lastTranscript.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "최근 인식: ${uiState.lastTranscript}",
+                                        fontSize = 11.sp,
+                                        color = if (uiState.keywordDetected) Color(0xFFD32F2F) else Color(0xFF666666),
+                                        maxLines = 1
+                                    )
+                                }
                             }
+
+                            // 실시간 상태 표시
+                            Surface(
+                                color = if (uiState.isSTTActive) Color(0xFF4CAF50) else Color(0xFFFFEB3B),
+                                shape = CircleShape,
+                                modifier = Modifier.size(12.dp)
+                            ) {}
                         }
 
-                        // STT 시작/중지 버튼
-                        Button(
-                            onClick = {
-                                if (hasAudioPermission(context)) {
-                                    mainViewModel.activateSTT()
-                                } else {
-                                    requestPermission()
-                                }
-                            },
-                            modifier = Modifier.height(32.dp),
-                            enabled = !uiState.isLoading,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF83E3BD)
-                            )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // STT 제어 버튼들
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(12.dp))
+                            if (uiState.isSTTActive) {
+                                // STT가 활성화된 상태 - 비활성화 버튼
+                                Button(
+                                    onClick = { mainViewModel.deactivateSTT() },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = !uiState.isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722))
+                                ) {
+                                    if (uiState.isLoading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                                    } else {
+                                        Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("감지 중지", fontSize = 12.sp)
+                                    }
+                                }
+
+                                // 수동 테스트 버튼 (기존 방식)
+                                Button(
+                                    onClick = {
+                                        if (hasAudioPermission(context)) {
+                                            mainViewModel.startVoiceRecognition()
+                                        } else {
+                                            requestPermission()
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = !uiState.isRecording,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+                                ) {
+                                    if (uiState.isRecording) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                                    } else {
+                                        Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("테스트", fontSize = 12.sp)
+                                    }
+                                }
+
                             } else {
-                                Text(
-                                    text = if (uiState.isSTTActive) "재시작" else "시작",
-                                    fontSize = 12.sp
-                                )
+                                // STT가 비활성화된 상태 - 활성화 버튼
+                                Button(
+                                    onClick = {
+                                        if (hasAudioPermission(context)) {
+                                            mainViewModel.activateSTTAndStartService()
+                                        } else {
+                                            requestPermission()
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !uiState.isLoading,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                                ) {
+                                    if (uiState.isLoading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                                    } else {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("실시간 음성 감지 시작", fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
                         }
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        // 🔥 수동 응급 호출 버튼은 STT 활성화 상태에서만 표시
+        if (uiState.isSTTActive) {
+            Button(
+                onClick = { mainViewModel.sendManualEmergency() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                enabled = !uiState.isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5722))
+            ) {
+                Icon(Icons.Default.Warning, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("수동 응급 호출", fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(12.dp))

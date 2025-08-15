@@ -9,12 +9,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import android.graphics.Bitmap
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.util.Log
 import com.project.nolbom.data.model.UserProfile
 import com.project.nolbom.data.repository.UserRepository
 import com.project.nolbom.data.repository.STTRepository
 import com.project.nolbom.data.local.TokenStore
+import com.project.nolbom.utils.RealtimeVoiceService
 import com.project.nolbom.utils.VoiceRecorder
+import kotlinx.coroutines.delay
 
 // 🔥 UI 상태 클래스에 STT 관련 필드 추가
 data class MainUiState(
@@ -143,6 +147,7 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
 
     fun isUserRegistered(): Boolean = TokenStore.isLoggedIn()
 
+    // 🔥 회원가입 후 자동으로 STT 켜기
     fun registerUser(userName: String, userPhone: String) {
         _uiState.value = _uiState.value.copy(isLoading = true)
         addMessage("📝 회원가입 중...")
@@ -168,8 +173,11 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                 )
 
                 addMessage("✅ 회원가입 완료: $userName")
+
+                // 🔥 자동으로 서버 연결 후 STT 켜기
                 checkServerHealth()
-                activateSTTIfNeeded()
+                delay(1000) // 서버 연결 확인 후
+                activateSTTAndStartService()
 
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false)
@@ -179,11 +187,116 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
     }
 
-    fun activateSTTIfNeeded() {
-        if (!_uiState.value.isSTTActive && _uiState.value.userRegistered) {
-            activateSTT()
+    // 🔥 STT 활성화 + 실시간 서비스 시작
+    fun activateSTTAndStartService() {
+        if (!_uiState.value.userRegistered) {
+            addMessage("❌ 먼저 회원가입이 필요합니다")
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        addMessage("🔄 STT 활성화 및 실시간 감지 시작 중...")
+
+        viewModelScope.launch {
+            try {
+                val result = sttRepository.activateSTT(enable = true)
+
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                isSTTActive = true
+                            )
+
+                            addMessage("✅ STT 활성화 성공!")
+
+                            // 🔥 실시간 음성 감지 서비스 시작
+                            currentContext?.let { context ->
+                                startRealtimeVoiceService(context)
+                            }
+                        } else {
+                            _uiState.value = _uiState.value.copy(isLoading = false)
+                            addMessage("❌ STT 활성화 실패: ${response.message}")
+                        }
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(isLoading = false)
+                        addMessage("❌ STT 서버 연결 실패: ${error.message}")
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                addMessage("❌ STT 활성화 오류: ${e.message}")
+            }
         }
     }
+
+    // 🔥 STT 비활성화 (완전 중지)
+    fun deactivateSTT() {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        addMessage("🛑 STT 비활성화 중...")
+
+        viewModelScope.launch {
+            try {
+                // 서비스 중지
+                currentContext?.let { context ->
+                    stopRealtimeVoiceService(context)
+                }
+
+                // 서버에 비활성화 요청
+                val result = sttRepository.activateSTT(enable = false)
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isSTTActive = false
+                )
+
+                addMessage("✅ STT 완전히 비활성화됨")
+
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                addMessage("❌ STT 비활성화 오류: ${e.message}")
+            }
+        }
+    }
+
+    // 🔥 실시간 음성 감지 서비스 제어
+    private var currentContext: Context? = null
+
+    fun setContext(context: Context) {
+        currentContext = context
+    }
+
+    fun startRealtimeVoiceService(context: Context) {
+        val intent = Intent(context, RealtimeVoiceService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+        addMessage("🎤 실시간 음성 감지 시작됨 - 화면이 꺼져도 계속 작동합니다")
+    }
+
+    fun stopRealtimeVoiceService(context: Context) {
+        val intent = Intent(context, RealtimeVoiceService::class.java)
+        context.stopService(intent)
+        addMessage("🛑 실시간 음성 감지 중지됨")
+    }
+
+    // 🔥 앱 시작 시 기존 사용자 자동 활성화
+    fun activateSTTIfNeeded() {
+        if (!_uiState.value.isSTTActive && _uiState.value.userRegistered) {
+            activateSTTAndStartService()
+        }
+    }
+
+
+//    fun activateSTTIfNeeded() {
+//        if (!_uiState.value.isSTTActive && _uiState.value.userRegistered) {
+//            activateSTT()
+//        }
+//    }
 
     fun activateSTT() {
         if (!_uiState.value.userRegistered) {
