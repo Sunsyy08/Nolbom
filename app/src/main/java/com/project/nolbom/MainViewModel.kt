@@ -1,4 +1,4 @@
-// MainViewModel.kt - 기존 코드에 STT 기능 추가
+// MainViewModel.kt - 자동 STT 활성화 개선 버전
 package com.project.nolbom
 
 import androidx.lifecycle.ViewModel
@@ -48,6 +48,7 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
     // 🔥 STT 관련 추가
     private val sttRepository = STTRepository()
     private var voiceRecorder: VoiceRecorder? = null
+    private var currentContext: Context? = null
 
     private val _messages = MutableStateFlow<List<String>>(emptyList())
     val messages: StateFlow<List<String>> = _messages.asStateFlow()
@@ -57,14 +58,13 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         loadSTTUserInfo() // 🔥 STT 사용자 정보도 로드
     }
 
-    // ========== 🔥 기존 프로필 관련 코드 (그대로 유지) ==========
+    // ========== 기존 프로필 관련 코드 (그대로 유지) ==========
     fun loadUserProfile() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             android.util.Log.d("MainViewModel", "프로필 로딩 시작")
 
-            // 🆕 먼저 로컬 데이터 시도, 실패하면 API 호출
             userRepository.getUserProfileFromLocal()
                 .onSuccess { profile ->
                     android.util.Log.d("MainViewModel", "로컬 데이터 로드 성공: ${profile.name}")
@@ -77,7 +77,6 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                 }
                 .onFailure { localError ->
                     android.util.Log.d("MainViewModel", "로컬 데이터 실패: ${localError.message}")
-                    // 로컬 데이터가 없으면 API 호출 시도
                     userRepository.getUserProfile()
                         .onSuccess { profile ->
                             android.util.Log.d("MainViewModel", "API 데이터 로드 성공: ${profile.name}")
@@ -103,28 +102,32 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         loadUserProfile()
     }
 
-    // 🆕 데이터 초기화 (테스트용)
     fun clearUserData() {
         userRepository.clearUserData()
+        // 🔥 TokenStore도 함께 초기화
+        TokenStore.clearUserData()
         _uiState.value = MainUiState()
         loadUserProfile()
     }
 
-    // 🆕 테스트 데이터 저장 (테스트용)
     fun saveTestData() {
         userRepository.saveTestData()
         loadUserProfile()
     }
 
-    // 🆕 저장된 데이터 로그 출력 (디버깅용)
     fun logUserData() {
         userRepository.logStoredUserData()
     }
 
-    // ========== 🔥 새로 추가된 STT 관련 코드 ==========
+    // ========== 🔥 STT 관련 코드 ==========
 
     fun initVoiceRecorder(context: Context) {
+        currentContext = context
         voiceRecorder = VoiceRecorder(context)
+    }
+
+    fun setContext(context: Context) {
+        currentContext = context
     }
 
     private fun loadSTTUserInfo() {
@@ -174,10 +177,9 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
 
                 addMessage("✅ 회원가입 완료: $userName")
 
-                // 🔥 자동으로 서버 연결 후 STT 켜기
-                checkServerHealth()
-                delay(1000) // 서버 연결 확인 후
-                activateSTTAndStartService()
+                // 🔥 회원가입 즉시 자동으로 STT 활성화
+                delay(500) // 짧은 딜레이 후
+                autoActivateSTTAfterSignup()
 
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false)
@@ -187,7 +189,76 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
     }
 
-    // 🔥 STT 활성화 + 실시간 서비스 시작
+    // 🔥 회원가입 후 자동 STT 활성화
+    private suspend fun autoActivateSTTAfterSignup() {
+        addMessage("🔄 자동으로 STT 활성화 중...")
+
+        try {
+            // 1. 서버 연결 확인
+            val healthResult = sttRepository.getServerStatus()
+            healthResult.fold(
+                onSuccess = { response ->
+                    _uiState.value = _uiState.value.copy(serverConnected = true)
+                    addMessage("✅ 서버 연결 성공")
+
+                    // 2. STT 활성화
+                    val activateResult = sttRepository.activateSTT(enable = true)
+                    activateResult.fold(
+                        onSuccess = { activateResponse ->
+                            if (activateResponse.success) {
+                                _uiState.value = _uiState.value.copy(isSTTActive = true)
+                                addMessage("✅ STT 자동 활성화 성공!")
+
+                                // 🔥 STT 상태 저장
+                                TokenStore.setSTTActive(true)
+
+                                // 3. 실시간 서비스 시작
+                                currentContext?.let { context ->
+                                    startRealtimeVoiceService(context)
+                                    addMessage("🎤 실시간 음성 감지 자동 시작됨")
+                                }
+                            } else {
+                                addMessage("❌ STT 활성화 실패: ${activateResponse.message}")
+                            }
+                        },
+                        onFailure = { error ->
+                            addMessage("❌ STT 활성화 요청 실패: ${error.message}")
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(serverConnected = false)
+                    addMessage("❌ 서버 연결 실패: ${error.message}")
+                }
+            )
+        } catch (e: Exception) {
+            addMessage("❌ 자동 STT 활성화 오류: ${e.message}")
+            Log.e("MainViewModel", "자동 STT 활성화 오류", e)
+        }
+    }
+
+    // 🔥 앱 시작 시 기존 사용자 자동 활성화 (홈화면 진입시)
+    fun activateSTTIfNeeded() {
+        // 이미 등록된 사용자이고, STT 복원이 필요한 경우
+        if (_uiState.value.userRegistered && TokenStore.shouldRestoreSTT()) {
+            addMessage("🔄 이전 세션 복원 - 자동으로 STT 재활성화 중...")
+
+            viewModelScope.launch {
+                autoActivateSTTAfterSignup() // 같은 로직 재사용
+            }
+        } else if (_uiState.value.userRegistered && TokenStore.shouldAutoStartSTT()) {
+            // 회원가입 후 첫 실행인 경우
+            addMessage("🔄 신규 사용자 - 자동으로 STT 활성화 중...")
+
+            viewModelScope.launch {
+                autoActivateSTTAfterSignup()
+                // 자동 시작 플래그 해제 (한 번만 실행)
+                TokenStore.setSTTAutoStart(false)
+            }
+        }
+    }
+
+    // 🔥 수동 STT 활성화 (버튼 클릭시)
     fun activateSTTAndStartService() {
         if (!_uiState.value.userRegistered) {
             addMessage("❌ 먼저 회원가입이 필요합니다")
@@ -195,7 +266,7 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
 
         _uiState.value = _uiState.value.copy(isLoading = true)
-        addMessage("🔄 STT 활성화 및 실시간 감지 시작 중...")
+        addMessage("🔄 수동 STT 활성화 및 실시간 감지 시작 중...")
 
         viewModelScope.launch {
             try {
@@ -209,9 +280,12 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                                 isSTTActive = true
                             )
 
-                            addMessage("✅ STT 활성화 성공!")
+                            addMessage("✅ STT 수동 활성화 성공!")
 
-                            // 🔥 실시간 음성 감지 서비스 시작
+                            // 🔥 STT 상태 저장
+                            TokenStore.setSTTActive(true)
+
+                            // 실시간 음성 감지 서비스 시작
                             currentContext?.let { context ->
                                 startRealtimeVoiceService(context)
                             }
@@ -232,25 +306,28 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
     }
 
-    // 🔥 STT 비활성화 (완전 중지)
+    // 🔥 STT 비활성화 (중지 버튼 클릭시)
     fun deactivateSTT() {
         _uiState.value = _uiState.value.copy(isLoading = true)
         addMessage("🛑 STT 비활성화 중...")
 
         viewModelScope.launch {
             try {
-                // 서비스 중지
+                // 1. 먼저 서비스 중지
                 currentContext?.let { context ->
                     stopRealtimeVoiceService(context)
                 }
 
-                // 서버에 비활성화 요청
+                // 2. 서버에 비활성화 요청
                 val result = sttRepository.activateSTT(enable = false)
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isSTTActive = false
                 )
+
+                // 🔥 STT 상태 저장
+                TokenStore.setSTTActive(false)
 
                 addMessage("✅ STT 완전히 비활성화됨")
 
@@ -262,78 +339,29 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
     }
 
     // 🔥 실시간 음성 감지 서비스 제어
-    private var currentContext: Context? = null
-
-    fun setContext(context: Context) {
-        currentContext = context
-    }
-
-    fun startRealtimeVoiceService(context: Context) {
-        val intent = Intent(context, RealtimeVoiceService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
-        addMessage("🎤 실시간 음성 감지 시작됨 - 화면이 꺼져도 계속 작동합니다")
-    }
-
-    fun stopRealtimeVoiceService(context: Context) {
-        val intent = Intent(context, RealtimeVoiceService::class.java)
-        context.stopService(intent)
-        addMessage("🛑 실시간 음성 감지 중지됨")
-    }
-
-    // 🔥 앱 시작 시 기존 사용자 자동 활성화
-    fun activateSTTIfNeeded() {
-        if (!_uiState.value.isSTTActive && _uiState.value.userRegistered) {
-            activateSTTAndStartService()
-        }
-    }
-
-
-//    fun activateSTTIfNeeded() {
-//        if (!_uiState.value.isSTTActive && _uiState.value.userRegistered) {
-//            activateSTT()
-//        }
-//    }
-
-    fun activateSTT() {
-        if (!_uiState.value.userRegistered) {
-            addMessage("❌ 먼저 회원가입이 필요합니다")
-            return
-        }
-
-        _uiState.value = _uiState.value.copy(isLoading = true)
-        addMessage("🔄 combined_server STT 활성화 중...")
-
-        viewModelScope.launch {
-            try {
-                val result = sttRepository.activateSTT(enable = true)
-
-                result.fold(
-                    onSuccess = { response ->
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            isSTTActive = response.success
-                        )
-                        if (response.success) {
-                            addMessage("✅ combined_server STT 활성화 성공: ${response.message}")
-                        } else {
-                            addMessage("❌ STT 활성화 실패: ${response.message}")
-                        }
-                    },
-                    onFailure = { error ->
-                        _uiState.value = _uiState.value.copy(isLoading = false)
-                        addMessage("❌ combined_server 연결 실패: ${error.message}")
-                        Log.e("MainViewModel", "STT 활성화 실패", error)
-                    }
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false)
-                addMessage("❌ STT 활성화 오류: ${e.message}")
-                Log.e("MainViewModel", "STT 활성화 오류", e)
+    private fun startRealtimeVoiceService(context: Context) {
+        try {
+            val intent = Intent(context, RealtimeVoiceService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
             }
+            addMessage("🎤 실시간 음성 감지 시작됨 - 화면이 꺼져도 계속 작동합니다")
+        } catch (e: Exception) {
+            addMessage("❌ 실시간 서비스 시작 실패: ${e.message}")
+            Log.e("MainViewModel", "실시간 서비스 시작 실패", e)
+        }
+    }
+
+    private fun stopRealtimeVoiceService(context: Context) {
+        try {
+            val intent = Intent(context, RealtimeVoiceService::class.java)
+            context.stopService(intent)
+            addMessage("🛑 실시간 음성 감지 중지됨")
+        } catch (e: Exception) {
+            addMessage("❌ 실시간 서비스 중지 실패: ${e.message}")
+            Log.e("MainViewModel", "실시간 서비스 중지 실패", e)
         }
     }
 
@@ -345,17 +373,17 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                 result.fold(
                     onSuccess = { response ->
                         _uiState.value = _uiState.value.copy(serverConnected = true)
-                        addMessage("✅ combined_server 연결 성공 (활성 사용자: ${response.activeUsersCount}명)")
+                        addMessage("✅ 서버 연결 성공 (활성 사용자: ${response.activeUsersCount}명)")
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(serverConnected = false)
-                        addMessage("❌ combined_server 연결 실패: ${error.message}")
+                        addMessage("❌ 서버 연결 실패: ${error.message}")
                         Log.e("MainViewModel", "서버 연결 실패", error)
                     }
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(serverConnected = false)
-                addMessage("❌ combined_server 확인 오류: ${e.message}")
+                addMessage("❌ 서버 확인 오류: ${e.message}")
                 Log.e("MainViewModel", "서버 확인 오류", e)
             }
         }
@@ -399,7 +427,7 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                 val audioBase64 = voiceRecorder!!.recordShortAudio(3000)
 
                 if (audioBase64 != null) {
-                    addMessage("📡 combined_server로 음성 데이터 전송 중...")
+                    addMessage("📡 서버로 음성 데이터 전송 중...")
 
                     val result = sttRepository.recognizeVoice(audioBase64)
 
@@ -417,7 +445,7 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                             }
 
                             if (response.keywordDetected) {
-                                addMessage("🚨 combined_server에서 응급 키워드 감지!")
+                                addMessage("🚨 서버에서 응급 키워드 감지!")
                                 if (response.smsSent) {
                                     addMessage("📱 응급 SMS 전송 완료")
                                 }
@@ -427,7 +455,7 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                         },
                         onFailure = { error ->
                             _uiState.value = _uiState.value.copy(isRecording = false)
-                            addMessage("❌ combined_server 음성 인식 실패: ${error.message}")
+                            addMessage("❌ 음성 인식 실패: ${error.message}")
                         }
                     )
                 } else {
@@ -449,7 +477,7 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
 
         _uiState.value = _uiState.value.copy(isLoading = true)
-        addMessage("🚨 combined_server로 수동 응급 호출 전송 중...")
+        addMessage("🚨 수동 응급 호출 전송 중...")
 
         viewModelScope.launch {
             try {

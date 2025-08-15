@@ -142,14 +142,20 @@ fun MainScreen(
     var userName by remember { mutableStateOf("") }
     var userPhone by remember { mutableStateOf("01044573420") }
 
-    // 🔥 VoiceRecorder 초기화 및 STT 확인
+    // 🔥 VoiceRecorder 초기화 및 STT 자동 활성화 로직
     LaunchedEffect(Unit) {
+        // 1. Context 설정 및 VoiceRecorder 초기화
+        mainViewModel.setContext(context)
         mainViewModel.initVoiceRecorder(context)
+
+        // 2. 사용자 등록 상태 확인
         if (!mainViewModel.isUserRegistered()) {
+            // 미등록 사용자 - 회원가입 다이얼로그 표시
             showSignupDialog = true
         } else {
+            // 🔥 기존 등록 사용자 - 자동으로 STT 활성화
             mainViewModel.checkServerHealth()
-            mainViewModel.activateSTTIfNeeded()
+            mainViewModel.activateSTTIfNeeded() // 자동 활성화 함수 호출
         }
     }
 
@@ -169,16 +175,17 @@ fun MainScreen(
         }
 
         // 🔥 STT 상태 헤더 추가
+        // 🔥 STT 상태 헤더 - 상태에 따른 색상과 메시지 개선
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = when {
-                    !uiState.userRegistered -> Color(0xFFFF9800)
-                    !uiState.serverConnected -> Color(0xFFF44336)
-                    uiState.isSTTActive -> Color(0xFF4CAF50)
-                    else -> Color(0xFF2196F3)
+                    !uiState.userRegistered -> Color(0xFFFF9800) // 주황색 - 회원가입 필요
+                    !uiState.serverConnected -> Color(0xFFF44336) // 빨간색 - 서버 연결 안됨
+                    uiState.isSTTActive -> Color(0xFF4CAF50) // 초록색 - 활성화됨
+                    else -> Color(0xFF2196F3) // 파란색 - 비활성화됨
                 }
             )
         ) {
@@ -194,9 +201,9 @@ fun MainScreen(
                 )
                 Text(
                     text = when {
-                        !uiState.userRegistered -> "회원가입 필요"
-                        !uiState.serverConnected -> "서버 연결 안됨"
-                        uiState.isSTTActive -> "활성화됨"
+                        !uiState.userRegistered -> "회원가입 후 자동 활성화됩니다"
+                        !uiState.serverConnected -> "서버 연결 중..."
+                        uiState.isSTTActive -> "실시간 감지 중 - 화면 꺼져도 작동"
                         else -> "비활성화됨"
                     },
                     color = Color.White.copy(alpha = 0.9f),
@@ -259,7 +266,7 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 🔥 STT 컨트롤 카드 추가
+        // 🔥 STT 컨트롤 카드 - 등록된 사용자에게만 표시
         if (uiState.userRegistered) {
             RequestAudioPermission(
                 onPermissionGranted = { mainViewModel.addMessage("✅ 마이크 권한 승인됨") },
@@ -271,7 +278,10 @@ fun MainScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (uiState.isSTTActive) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color(0xFFFFEB3B).copy(alpha = 0.1f)
+                        containerColor = if (uiState.isSTTActive)
+                            Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        else
+                            Color(0xFFFFEB3B).copy(alpha = 0.1f)
                     )
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -282,13 +292,19 @@ fun MainScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (uiState.isSTTActive) "🎤 실시간 음성 감지 중" else "🔇 음성 감지 꺼짐",
+                                    text = if (uiState.isSTTActive)
+                                        "🎤 실시간 음성 감지 중"
+                                    else
+                                        "🔇 음성 감지 대기 중",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (uiState.isSTTActive) Color(0xFF4CAF50) else Color(0xFF757575)
                                 )
                                 Text(
-                                    text = if (uiState.isSTTActive) "화면이 꺼져도 계속 작동 중입니다" else "음성 감지가 비활성화되어 있습니다",
+                                    text = if (uiState.isSTTActive)
+                                        "화면이 꺼져도 계속 작동 중입니다"
+                                    else
+                                        "STT가 비활성화되어 있습니다",
                                     fontSize = 12.sp,
                                     color = Color.Gray
                                 )
@@ -315,7 +331,7 @@ fun MainScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // STT 제어 버튼들
+                        // 🔥 STT 제어 버튼들 - 자동 활성화 고려한 UI
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -333,7 +349,7 @@ fun MainScreen(
                                     } else {
                                         Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("감지 중지", fontSize = 12.sp)
+                                        Text("완전 중지", fontSize = 12.sp)
                                     }
                                 }
 
@@ -360,7 +376,7 @@ fun MainScreen(
                                 }
 
                             } else {
-                                // STT가 비활성화된 상태 - 활성화 버튼
+                                // STT가 비활성화된 상태 - 수동 재활성화 버튼
                                 Button(
                                     onClick = {
                                         if (hasAudioPermission(context)) {
@@ -378,7 +394,7 @@ fun MainScreen(
                                     } else {
                                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("실시간 음성 감지 시작", fontWeight = FontWeight.Bold)
+                                        Text("실시간 음성 감지 재시작", fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -540,21 +556,35 @@ fun MainScreen(
             }
         )
     }
-    // 🔥 여기에 STT 회원가입 다이얼로그 추가
+    // 🔥 STT 회원가입 다이얼로그 - 회원가입 즉시 자동 활성화
     if (showSignupDialog) {
         AlertDialog(
             onDismissRequest = { /* 회원가입 필수 */ },
-            title = { Text("음성 응급 감지 설정") },
+            title = {
+                Text(
+                    "음성 응급 감지 설정",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E7D32)
+                )
+            },
             text = {
                 Column {
-                    Text("음성으로 응급상황을 감지하기 위해 정보를 입력해주세요.")
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "회원가입 완료 후 자동으로 실시간 음성 감지가 시작됩니다.",
+                        color = Color(0xFF1976D2),
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedTextField(
                         value = userName,
                         onValueChange = { userName = it },
                         label = { Text("이름") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF83E3BD),
+                            focusedLabelColor = Color(0xFF83E3BD)
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -563,7 +593,20 @@ fun MainScreen(
                         value = userPhone,
                         onValueChange = { userPhone = it },
                         label = { Text("응급 연락처") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF83E3BD),
+                            focusedLabelColor = Color(0xFF83E3BD)
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        "※ 화면이 꺼져도 백그라운드에서 계속 작동합니다",
+                        fontSize = 11.sp,
+                        color = Color.Gray,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                     )
                 }
             },
@@ -575,9 +618,12 @@ fun MainScreen(
                             showSignupDialog = false
                         }
                     },
-                    enabled = userName.isNotBlank() && userPhone.isNotBlank()
+                    enabled = userName.isNotBlank() && userPhone.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                 ) {
-                    Text("설정 완료")
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("가입 후 자동 시작", fontWeight = FontWeight.Bold)
                 }
             }
         )
