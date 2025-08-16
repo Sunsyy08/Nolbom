@@ -36,7 +36,7 @@ class MissingPersonsRepository {
         try {
             val response = api.getMissingPersonDetail(id)
             if (response.isSuccessful && response.body()?.success == true) {
-                val person = response.body()!!.profile // 🔧 data 대신 profile 사용
+                val person = response.body()!!.data // ✅ 여기 고쳤음
                 if (person != null) {
                     Result.success(person)
                 } else {
@@ -62,7 +62,7 @@ class MissingPersonsRepository {
             val request = FoundRequest(lat, lng, notes)
             val response = api.markAsFound(id, request)
             if (response.isSuccessful && response.body()?.success == true) {
-                val message = response.body()!!.profile ?: "발견 처리가 완료되었습니다" // 🔧 profile 필드 사용
+                val message = response.body()!!.data ?: "발견 처리가 완료되었습니다" // ✅ profile ❌ → data
                 Result.success(message.toString())
             } else {
                 val errorMsg = response.body()?.error ?: "발견 처리 실패"
@@ -72,6 +72,7 @@ class MissingPersonsRepository {
             Result.failure(e)
         }
     }
+
 
     // 위치 업데이트 - 🔧 기존 ApiResponse 구조에 맞게 수정
     suspend fun updateLocation(

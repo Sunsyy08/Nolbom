@@ -9,33 +9,29 @@ import retrofit2.http.*
 
 interface MissingPersonsApi {
 
-    // 실종자 목록 조회
-    @GET("missing-persons")
+    @GET("api/missing")
     suspend fun getMissingPersons(
         @Query("status") status: String = "MISSING",
         @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0
     ): Response<MissingPersonsResponse>
 
-    // 특정 실종자 상세 조회 - 🔧 기존 ApiResponse 사용
-    @GET("missing-persons/{id}")
+    @GET("api/missing/{id}")
     suspend fun getMissingPersonDetail(
         @Path("id") id: Int
-    ): Response<ApiResponse<MissingPerson>>
+    ): Response<MissingPersonResponse>
 
-    // 실종자 발견 처리 - 🔧 기존 ApiResponse 사용
-    @PUT("missing-persons/{id}/found")
+    @PUT("api/missing/{id}/found")
     suspend fun markAsFound(
         @Path("id") id: Int,
         @Body request: FoundRequest
-    ): Response<ApiResponse<String>>
+    ): Response<MissingPersonResponse>
 
-    // 위치 업데이트 - 🔧 기존 ApiResponse 사용
-    @PUT("missing-persons/{id}/location")
+    @PUT("api/missing/{id}/location")
     suspend fun updateLocation(
         @Path("id") id: Int,
         @Body request: LocationUpdateRequest
-    ): Response<ApiResponse<String>>
+    ): Response<MissingPersonResponse>
 
     // 헬스체크 - 🔧 기존 ApiResponse 사용
     @GET("health")

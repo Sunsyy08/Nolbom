@@ -54,12 +54,12 @@ object RetrofitClient {
         .build()
         .create(STTApiService::class.java)
 
-    // 🆕 실종자 API 추가
+    // 🔧 실종자 API 수정 - 올바른 baseUrl 사용
     val missingPersonsApi: MissingPersonsApi by lazy {
         Retrofit.Builder()
-            .baseUrl("http://$PC_IP:3000/api/missing/") // 기존 IP 사용
-            .client(client) // 기존 클라이언트 재사용
-            .addConverterFactory(MoshiConverterFactory.create(moshi)) // 기존 Moshi 사용
+            .baseUrl(BASE_URL) // ← 기본 BASE_URL 사용 (http://10.183.172.236:3000/)
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(MissingPersonsApi::class.java)
     }
