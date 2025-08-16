@@ -100,6 +100,11 @@ fun MainScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
+    // 🆕 백엔드 연동 ViewModel 추가
+    val alertListViewModel: AlertListViewModel = viewModel()
+    val alertUiState by alertListViewModel.uiState.collectAsState()
+    val backendAlertUsers by alertListViewModel.alertUsers.collectAsState()
+
     // 기존 ViewModel
     val mainViewModel: MainViewModel = viewModel {
         MainViewModel(UserRepository(context))
@@ -124,10 +129,14 @@ fun MainScreen(
         )
     )
 
+    // 🆕 사용자 리스트 - 백엔드 우선, 실패시 JSON
+    val jsonUserList = remember { loadUsersFromAssets(context) }
+    val userList = if (alertUiState.isConnectedToBackend) backendAlertUsers else jsonUserList
+
     // JSON에서 사용자 리스트 읽기
-    val userList = remember {
-        loadUsersFromAssets(context)
-    }
+//    val userList = remember {
+//        loadUsersFromAssets(context)
+//    }
 
     // 권한이 허용되면 마지막 위치 가져오기
     androidx.compose.runtime.LaunchedEffect(locationPermissions.allPermissionsGranted) {
@@ -210,6 +219,55 @@ fun MainScreen(
                     fontSize = 12.sp
                 )
             }
+        }
+
+        // 🆕 백엔드 연결 상태 카드 추가
+        if (!alertUiState.isConnectedToBackend) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFEB3B).copy(alpha = 0.1f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CloudOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = Color(0xFFFF9800)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "실종자 목록 오프라인 모드",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFFF9800)
+                        )
+                        Text(
+                            text = "저장된 데이터를 표시합니다",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    IconButton(
+                        onClick = { alertListViewModel.refresh() },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "재연결",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         Spacer(modifier = Modifier.height(8.dp))

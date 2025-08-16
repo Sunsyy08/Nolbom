@@ -53,4 +53,24 @@ object RetrofitClient {
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()
         .create(STTApiService::class.java)
+
+    // 🆕 실종자 API 추가
+    val missingPersonsApi: MissingPersonsApi by lazy {
+        Retrofit.Builder()
+            .baseUrl("http://$PC_IP:3000/api/missing/") // 기존 IP 사용
+            .client(client) // 기존 클라이언트 재사용
+            .addConverterFactory(MoshiConverterFactory.create(moshi)) // 기존 Moshi 사용
+            .build()
+            .create(MissingPersonsApi::class.java)
+    }
+
+    // 🆕 연결 테스트 함수
+    suspend fun testMissingPersonsConnection(): Boolean {
+        return try {
+            val response = missingPersonsApi.healthCheck()
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
 }
