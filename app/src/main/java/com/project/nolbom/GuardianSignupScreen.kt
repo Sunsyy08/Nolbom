@@ -105,9 +105,15 @@ fun GuardianSignupScreen(
                 OutlinedTextField(
                     value = wardEmail,
                     onValueChange = { wardEmail = it },
-                    label = { Text("노약자 이메일") },
+                    label = { Text("노약자 이메일", color = Color(0xFF6A4C93)) },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedBorderColor = Color.Gray,
+                        focusedBorderColor = Color.Gray
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp),
@@ -119,9 +125,15 @@ fun GuardianSignupScreen(
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
-                    label = { Text("집 주소") },
+                    label = { Text("집 주소", color = Color(0xFF6A4C93)) },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedBorderColor = Color.Gray,
+                        focusedBorderColor = Color.Gray
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp),
@@ -133,9 +145,15 @@ fun GuardianSignupScreen(
                 OutlinedTextField(
                     value = relation,
                     onValueChange = { relation = it },
-                    label = { Text("노약자와의 관계") },
+                    label = { Text("노약자와의 관계", color = Color(0xFF6A4C93)) },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedBorderColor = Color.Gray,
+                        focusedBorderColor = Color.Gray
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp),
@@ -195,7 +213,7 @@ fun GuardianSignupScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5)),
                     enabled = !isLoading
                 ) {
                     if (isLoading) {

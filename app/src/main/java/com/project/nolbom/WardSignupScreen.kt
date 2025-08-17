@@ -148,6 +148,7 @@ fun WardSignupScreen(
                     Box(
                         modifier = Modifier
                             .size(120.dp)
+                            .clip(CircleShape)
                             .clickable { cameraLauncher.launch(null) },
                         contentAlignment = Alignment.Center
                     ) {
@@ -156,13 +157,18 @@ fun WardSignupScreen(
                                 bitmap = profileBitmap!!.asImageBitmap(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize()
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
                             )
                         } else {
-                            Icon(
-                                imageVector = Icons.Default.CameraAlt,
-                                contentDescription = "프로필 등록",
-                                modifier = Modifier.size(48.dp)
+                            Image(
+                                painter = profilePlaceholder,
+                                contentDescription = "기본 프로필",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(CircleShape)
                             )
                         }
                     }
@@ -216,36 +222,45 @@ fun WardSignupScreen(
                 OutlinedTextField(
                     value = homeAddress,
                     onValueChange = { homeAddress = it },
-                    label = { Text("집 주소") },
+                    label = { Text("집 주소", color = Color(0xFF6A4C93)) },
                     singleLine = true,
                     shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedBorderColor = Color.Gray,
+                        focusedBorderColor = Color.Gray
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
                 )
 
-                Button(onClick = {
-                    isLoading = true
-                    scope.launch {
-                        try {
-                            // RetrofitClient.api 대신 NetworkModule.kakaoApi 로 호출
-                            val resp = NetworkModule.kakaoApi.searchAddress(homeAddress)
-                            latLng = resp.documents.firstOrNull()?.address?.let { it.y to it.x }
+                Button(
+                    onClick = {
+                        isLoading = true
+                        scope.launch {
+                            try {
+                                // RetrofitClient.api 대신 NetworkModule.kakaoApi 로 호출
+                                val resp = NetworkModule.kakaoApi.searchAddress(homeAddress)
+                                latLng = resp.documents.firstOrNull()?.address?.let { it.y to it.x }
 
-                            // resp.documents 에는 Document.address 가 있고, 그 안에 x,y 가 있습니다.
-                            latLng = resp.documents
-                                .firstOrNull()
-                                ?.address
-                                ?.let { it.y to it.x }
+                                // resp.documents 에는 Document.address 가 있고, 그 안에 x,y 가 있습니다.
+                                latLng = resp.documents
+                                    .firstOrNull()
+                                    ?.address
+                                    ?.let { it.y to it.x }
 
-                        } catch(e: Exception) {
-                            errorMessage = e.message ?: "주소 변환 실패"
-                            showErrorDialog = true
-                        } finally {
-                            isLoading = false
+                            } catch(e: Exception) {
+                                errorMessage = e.message ?: "주소 변환 실패"
+                                showErrorDialog = true
+                            } finally {
+                                isLoading = false
+                            }
                         }
-                    }
-                }) {
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5))
+                ) {
                     Text("주소 검색")
                 }
 
@@ -259,8 +274,14 @@ fun WardSignupScreen(
                 OutlinedTextField(
                     value = medicalStatus,
                     onValueChange = { medicalStatus = it },
-                    label = { Text("현재 의학 상태") },
+                    label = { Text("현재 의학 상태", color = Color(0xFF6A4C93)) },
                     shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedBorderColor = Color.Gray,
+                        focusedBorderColor = Color.Gray
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
@@ -273,7 +294,7 @@ fun WardSignupScreen(
                     OutlinedTextField(
                         value = height,
                         onValueChange = { height = it },
-                        label = { Text("키 (cm)") },
+                        label = { Text("키 (cm)", color = Color(0xFF6A4C93)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
@@ -286,6 +307,12 @@ fun WardSignupScreen(
                             }
                         ),
                         shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF8F9FA),
+                            focusedContainerColor = Color(0xFFF8F9FA),
+                            unfocusedBorderColor = Color.Gray,
+                            focusedBorderColor = Color.Gray
+                        ),
                         modifier = Modifier
                             .weight(1f)
                             .height(60.dp)
@@ -293,7 +320,7 @@ fun WardSignupScreen(
                     OutlinedTextField(
                         value = weight,
                         onValueChange = { weight = it },
-                        label = { Text("몸무게 (kg)") },
+                        label = { Text("몸무게 (kg)", color = Color(0xFF6A4C93)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
@@ -306,6 +333,12 @@ fun WardSignupScreen(
                             }
                         ),
                         shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF8F9FA),
+                            focusedContainerColor = Color(0xFFF8F9FA),
+                            unfocusedBorderColor = Color.Gray,
+                            focusedBorderColor = Color.Gray
+                        ),
                         modifier = Modifier
                             .weight(1f)
                             .height(60.dp)
@@ -317,10 +350,16 @@ fun WardSignupScreen(
                 OutlinedTextField(
                     value = safeRadius,
                     onValueChange = { safeRadius = it },
-                    label = { Text("안전 반경 (m)") },
+                    label = { Text("안전 반경 (m)", color = Color(0xFF6A4C93)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color(0xFFF8F9FA),
+                        focusedContainerColor = Color(0xFFF8F9FA),
+                        unfocusedBorderColor = Color.Gray,
+                        focusedBorderColor = Color.Gray
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
@@ -400,6 +439,7 @@ fun WardSignupScreen(
                         }
                     },
                     enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isLoading) CircularProgressIndicator(
@@ -422,6 +462,6 @@ fun WardSignupScreen(
                     }
                 )
             }
-            }
         }
     }
+}
