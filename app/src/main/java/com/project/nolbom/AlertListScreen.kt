@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -245,16 +246,19 @@ fun AlertCardLarge(user: AlertUser) {
                 .background(Color(0xFF83E3BD))
                 .padding(16.dp)
         ) {
-            // 🆕 실제 프로필 이미지 또는 기본 이미지 표시
-            if (user.profileImage != null) {
-                AsyncImage(
-                    model = user.profileImage,
-                    contentDescription = "프로필 이미지",
+            // ✅ 상단 프로필과 동일한 방식으로 변경
+            val profileBitmap = remember(user.profile_image) {
+                base64ToBitmap(user.profile_image)
+            }
+
+            if (profileBitmap != null) {
+                Image(
+                    bitmap = profileBitmap.asImageBitmap(),
+                    contentDescription = "${user.name} 프로필",
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape),
-                    contentScale = ContentScale.Crop,
-                    error = painterResource(id = R.drawable.profile)
+                    contentScale = ContentScale.Crop
                 )
             } else {
                 Image(
@@ -268,10 +272,7 @@ fun AlertCardLarge(user: AlertUser) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                // 🆕 이름과 성별을 따로 표시
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = user.name,
                     fontSize = 22.sp,
@@ -281,7 +282,6 @@ fun AlertCardLarge(user: AlertUser) {
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // 🆕 성별 정보 (한글로 표시)
                 user.gender?.let { gender ->
                     Text(
                         text = "성별: $gender",
@@ -290,7 +290,6 @@ fun AlertCardLarge(user: AlertUser) {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "나이: ${user.age}", fontSize = 14.sp, color = Color.DarkGray)
                 Text(text = "신장/체중: ${user.height} / ${user.weight}", fontSize = 14.sp, color = Color.DarkGray)
                 Text(text = "위치: ${user.location}", fontSize = 14.sp, color = Color.DarkGray)
@@ -298,7 +297,6 @@ fun AlertCardLarge(user: AlertUser) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 지도 (기존과 동일)
             MiniMapView(
                 modifier = Modifier
                     .width(110.dp)

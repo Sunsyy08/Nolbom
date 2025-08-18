@@ -47,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -61,6 +62,9 @@ import com.project.nolbom.data.network.UserLocationInfo
 import com.project.nolbom.map.KakaoMapView
 import com.project.nolbom.data.model.UserProfile
 import com.project.nolbom.data.repository.UserRepository
+
+import android.util.Base64
+
 
 // 전화 앱 실행을 위한 함수
 fun openPhoneApp(context: Context) {
@@ -853,6 +857,28 @@ fun ProfileHeaderWithData(
     }
 }
 
+// base64 문자열을 Bitmap으로 변환하는 함수
+fun base64ToBitmap(base64String: String?): Bitmap? {
+    if (base64String == null || base64String.isEmpty()) return null
+
+    return try {
+        // "data:image/jpeg;base64," 부분 제거
+        val base64Data = if (base64String.contains(",")) {
+            base64String.substring(base64String.indexOf(",") + 1)
+        } else {
+            base64String
+        }
+
+        val decodedBytes = Base64.decode(base64Data, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+    } catch (e: Exception) {
+        println("❌ Base64 → Bitmap 변환 실패: ${e.message}")
+        null
+    }
+}
+
+// 2. AlertCardSmall 함수 수정 (상단 프로필 방식 적용)
+
 @Composable
 fun AlertCardSmall(user: AlertUser) {
     Row(
@@ -861,19 +887,26 @@ fun AlertCardSmall(user: AlertUser) {
             .background(Color(0xFFF0F0F0), RoundedCornerShape(12.dp))
             .padding(12.dp)
     ) {
-        // 🆕 실제 프로필 이미지 또는 기본 이미지 표시
-        if (user.profileImage != null) {
-            // base64 이미지 로드 (Coil 라이브러리 필요)
-            AsyncImage(
-                model = user.profileImage,
-                contentDescription = "사용자 프로필",
+        // 🔍 프로필 이미지 상태 확인
+        println("🖼️ AlertCardSmall - ${user.name} 프로필 이미지: ${user.profile_image?.take(50) ?: "없음"}")
+
+        // ✅ 상단 프로필과 동일한 방식으로 변경
+        val profileBitmap = remember(user.profile_image) {
+            base64ToBitmap(user.profile_image)
+        }
+
+        if (profileBitmap != null) {
+            println("✅ ${user.name}: Bitmap 변환 성공")
+            Image(
+                bitmap = profileBitmap.asImageBitmap(),
+                contentDescription = "${user.name} 프로필",
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape),
-                contentScale = ContentScale.Crop,
-                error = painterResource(id = R.drawable.profile) // 오류시 기본 이미지
+                contentScale = ContentScale.Crop
             )
         } else {
+            println("📷 기본 프로필 이미지 사용 - ${user.name}")
             Image(
                 painter = painterResource(id = R.drawable.profile),
                 contentDescription = "기본 프로필",
@@ -895,7 +928,7 @@ fun AlertCardSmall(user: AlertUser) {
                 fontWeight = FontWeight.Bold
             )
 
-            // 🆕 성별 정보 추가 (한글로 표시)
+            // 성별 정보 추가
             user.gender?.let { gender ->
                 Text(
                     text = "성별: $gender,",
@@ -927,6 +960,7 @@ fun AlertCardSmall(user: AlertUser) {
         }
     }
 }
+
 
 @Composable
 fun ActionCardSection(onNavigateToAlertList: () -> Unit) {
