@@ -66,12 +66,36 @@ class RealtimeVoiceService : Service() {
             else -> {
                 Log.d(TAG, "🎤 실시간 음성 감지 서비스 시작")
 
+                // 🔧 권한 확인 추가
+                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                    Log.e(TAG, "❌ RECORD_AUDIO 권한 없음")
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                        Log.e(TAG, "❌ FOREGROUND_SERVICE_MICROPHONE 권한 없음")
+                        stopSelf()
+                        return START_NOT_STICKY
+                    }
+                }
+
                 val notification = createNotification()
-                startForeground(NOTIFICATION_ID, notification)
 
-                startRealtimeVoiceMonitoring()
+                // 🔧 try-catch로 startForeground 감싸기
+                try {
+                    startForeground(NOTIFICATION_ID, notification)
+                    startRealtimeVoiceMonitoring()
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "❌ Foreground Service 시작 실패: ${e.message}")
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
 
-                return START_STICKY // 서비스가 종료되어도 자동 재시작
+                return START_STICKY
             }
         }
     }

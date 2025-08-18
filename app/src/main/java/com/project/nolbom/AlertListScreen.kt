@@ -16,12 +16,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.project.nolbom.list.AlertUser
 import com.project.nolbom.AlertListViewModel
 
@@ -243,25 +245,51 @@ fun AlertCardLarge(user: AlertUser) {
                 .background(Color(0xFF83E3BD))
                 .padding(16.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.profile),
-                contentDescription = "프로필 이미지",
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-            )
+            // 🆕 실제 프로필 이미지 또는 기본 이미지 표시
+            if (user.profileImage != null) {
+                AsyncImage(
+                    model = user.profileImage,
+                    contentDescription = "프로필 이미지",
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(id = R.drawable.profile)
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.profile),
+                    contentDescription = "기본 프로필 이미지",
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(
                 modifier = Modifier.weight(1f)
             ) {
+                // 🆕 이름과 성별을 따로 표시
                 Text(
                     text = user.name,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF00796B)
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // 🆕 성별 정보 (한글로 표시)
+                user.gender?.let { gender ->
+                    Text(
+                        text = "성별: $gender",
+                        fontSize = 14.sp,
+                        color = Color.DarkGray
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "나이: ${user.age}", fontSize = 14.sp, color = Color.DarkGray)
                 Text(text = "신장/체중: ${user.height} / ${user.weight}", fontSize = 14.sp, color = Color.DarkGray)

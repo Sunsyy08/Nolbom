@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 
 // 위치 추적 관련 imports
 import com.google.accompanist.permissions.*
@@ -860,13 +861,27 @@ fun AlertCardSmall(user: AlertUser) {
             .background(Color(0xFFF0F0F0), RoundedCornerShape(12.dp))
             .padding(12.dp)
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.profile),
-            contentDescription = "사용자 프로필",
-            modifier = Modifier
-                .size(50.dp)
-                .clip(CircleShape)
-        )
+        // 🆕 실제 프로필 이미지 또는 기본 이미지 표시
+        if (user.profileImage != null) {
+            // base64 이미지 로드 (Coil 라이브러리 필요)
+            AsyncImage(
+                model = user.profileImage,
+                contentDescription = "사용자 프로필",
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+                error = painterResource(id = R.drawable.profile) // 오류시 기본 이미지
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.profile),
+                contentDescription = "기본 프로필",
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+            )
+        }
 
         Spacer(modifier = Modifier.width(12.dp))
 
@@ -879,6 +894,16 @@ fun AlertCardSmall(user: AlertUser) {
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
+
+            // 🆕 성별 정보 추가 (한글로 표시)
+            user.gender?.let { gender ->
+                Text(
+                    text = "성별: $gender,",
+                    fontSize = 12.sp,
+                    color = Color.DarkGray
+                )
+            }
+
             Text(
                 text = "${user.age},",
                 fontSize = 12.sp,

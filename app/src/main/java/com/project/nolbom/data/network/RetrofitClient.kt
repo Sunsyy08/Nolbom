@@ -12,7 +12,8 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 
 object RetrofitClient {
     // 🔧 실제 네트워크 IP 사용
-    private const val PC_IP = "10.183.172.236"
+    // 몇 주기마다 PC_IP 수정 해야함 IP 주소 달라짐
+    private const val PC_IP = "192.168.75.60"
 
     private const val BASE_URL = "http://$PC_IP:3000/"
     private const val STT_BASE_URL = "http://$PC_IP:8000/"

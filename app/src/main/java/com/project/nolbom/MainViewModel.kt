@@ -10,8 +10,10 @@ import kotlinx.coroutines.launch
 import android.graphics.Bitmap
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.project.nolbom.data.model.UserProfile
 import com.project.nolbom.data.repository.UserRepository
 import com.project.nolbom.data.repository.STTRepository
@@ -19,6 +21,7 @@ import com.project.nolbom.data.local.TokenStore
 import com.project.nolbom.utils.RealtimeVoiceService
 import com.project.nolbom.utils.VoiceRecorder
 import kotlinx.coroutines.delay
+import android.Manifest
 
 // 🔥 UI 상태 클래스에 STT 관련 필드 추가
 data class MainUiState(
@@ -338,9 +341,36 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
     }
 
+    // 🆕 권한 확인 함수 추가
+    private fun hasRequiredPermissions(context: Context): Boolean {
+        val requiredPermissions = mutableListOf(
+            Manifest.permission.RECORD_AUDIO
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        return requiredPermissions.all { permission ->
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
     // 🔥 실시간 음성 감지 서비스 제어
+    // 🔧 기존 startRealtimeVoiceService 함수 수정
     private fun startRealtimeVoiceService(context: Context) {
         try {
+            // 🆕 권한 확인 추가
+            if (!hasRequiredPermissions(context)) {
+                addMessage("❌ 필수 권한이 없습니다. 앱 설정에서 마이크 권한을 허용해주세요.")
+                Log.e("MainViewModel", "필수 권한 없음 - 서비스 시작 불가")
+                return
+            }
+
             val intent = Intent(context, RealtimeVoiceService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -348,9 +378,49 @@ class MainViewModel(private val userRepository: UserRepository) : ViewModel() {
                 context.startService(intent)
             }
             addMessage("🎤 실시간 음성 감지 시작됨 - 화면이 꺼져도 계속 작동합니다")
+        } catch (e: SecurityException) {
+            addMessage("❌ 권한 부족으로 실시간 서비스 시작 실패: ${e.message}")
+            Log.e("MainViewModel", "권한 부족으로 실시간 서비스 시작 실패", e)
         } catch (e: Exception) {
             addMessage("❌ 실시간 서비스 시작 실패: ${e.message}")
             Log.e("MainViewModel", "실시간 서비스 시작 실패", e)
+        }
+    }
+    // 🆕 권한 요청이 필요한지 확인하는 함수
+    fun needsPermissionRequest(context: Context): Boolean {
+        return !hasRequiredPermissions(context)
+    }
+
+    // 🆕 필요한 권한 목록 반환
+    fun getRequiredPermissions(): Array<String> {
+        val permissions = mutableListOf(
+            Manifest.permission.RECORD_AUDIO
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            permissions.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        return permissions.toTypedArray()
+    }
+
+    // 🆕 권한 요청 후 호출할 함수
+    fun onPermissionsGranted(context: Context, allGranted: Boolean) {
+        if (allGranted) {
+            addMessage("✅ 모든 권한이 허용되었습니다")
+            // 권한 허용 후 서비스 시작
+            if (_uiState.value.isSTTActive) {
+                startRealtimeVoiceService(context)
+            }
+        } else {
+            addMessage("❌ 일부 권한이 거부되었습니다. 실시간 음성 감지를 사용할 수 없습니다.")
+            // STT 상태를 비활성화
+            _uiState.value = _uiState.value.copy(isSTTActive = false)
+            TokenStore.setSTTActive(false)
         }
     }
 

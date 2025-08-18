@@ -8,7 +8,9 @@ data class AlertUser(
     val age: String,
     val height: String,
     val weight: String,
-    val location: String
+    val location: String,
+    val gender: String?,           // 🆕 성별 추가
+    val profileImage: String?      // 🆕 프로필 이미지 추가 (base64 데이터)
 )
 fun MissingPerson.toAlertUser(): AlertUser {
     return AlertUser(
@@ -20,7 +22,9 @@ fun MissingPerson.toAlertUser(): AlertUser {
             this.current_lng?.let { lng ->
                 "위도: ${"%.4f".format(lat)}, 경도: ${"%.4f".format(lng)}"
             }
-        } ?: this.home_address ?: "위치 정보 없음"
+        } ?: this.home_address ?: "위치 정보 없음",
+        gender = this.gender,          // 🆕 성별 매핑
+        profileImage = this.profile_image  // 🆕 프로필 이미지 매핑
     )
 }
 
