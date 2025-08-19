@@ -9,11 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,9 +21,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import kotlinx.coroutines.delay
 
 @Composable
 fun StartScreen(navController: NavController) {
+    // 3초 후 자동으로 다음 화면으로 이동
+    LaunchedEffect(Unit) {
+        delay(1000) // 3초 대기
+        navController.navigate(Screen.SignUp.route) {
+            popUpTo(Screen.Start.route) { inclusive = true }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -84,21 +91,6 @@ fun StartScreen(navController: NavController) {
             )
         }
 
-        Spacer(modifier = Modifier.height(60.dp))  // 버튼을 좀 위로 올림
-
-        // 시작하기 버튼
-        Button(
-            onClick = { navController.navigate(Screen.SignUp.route) },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF61D6A8)),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            Text("시작하기", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))  // 하단 여백
+        Spacer(modifier = Modifier.height(60.dp))  // 버튼이 있던 자리 여백
     }
 }
-
