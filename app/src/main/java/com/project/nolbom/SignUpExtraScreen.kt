@@ -1,9 +1,11 @@
 package com.project.nolbom.ui.signup
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -13,25 +15,23 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.res.painterResource
 import com.project.nolbom.Screen
 import com.project.nolbom.data.model.SignupExtraRequest
 import com.project.nolbom.data.network.RetrofitClient
 import kotlinx.coroutines.launch
 import com.project.nolbom.R
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
-import androidx.navigation.NavHostController
 import com.project.nolbom.data.repository.STTRepository
 import com.project.nolbom.data.local.TokenStore
 
@@ -58,21 +58,95 @@ fun SignUpExtraScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
-        contentAlignment = Alignment.Center
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFF5FBFA),
+                        Color(0xFFFFFFFF)
+                    )
+                )
+            )
     ) {
+        // 떠다니는 원들 - 이전 화면과 다른 위치
+        Box(
+            modifier = Modifier
+                .size(140.dp)
+                .background(
+                    Color(0x184FD1A5),
+                    CircleShape
+                )
+                .blur(25.dp)
+                .align(Alignment.TopCenter)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(90.dp)
+                .background(
+                    Color(0x2261D6A8),
+                    CircleShape
+                )
+                .blur(18.dp)
+                .align(Alignment.TopStart)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .background(
+                    Color(0x154CAF50),
+                    CircleShape
+                )
+                .blur(22.dp)
+                .align(Alignment.CenterEnd)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(75.dp)
+                .background(
+                    Color(0x284FD1A5),
+                    CircleShape
+                )
+                .blur(16.dp)
+                .align(Alignment.BottomStart)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(95.dp)
+                .background(
+                    Color(0x1A61D6A8),
+                    CircleShape
+                )
+                .blur(20.dp)
+                .align(Alignment.BottomEnd)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(65.dp)
+                .background(
+                    Color(0x304CAF50),
+                    CircleShape
+                )
+                .blur(14.dp)
+                .align(Alignment.CenterStart)
+        )
+
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 32.dp)
-                .offset(y = 40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = "추가 정보 입력",
-                fontSize = 24.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+                color = Color(0xFF2E2E2E),
+                modifier = Modifier.padding(bottom = 32.dp)
             )
 
             // 생년월일 입력
@@ -93,16 +167,18 @@ fun SignUpExtraScreen(
                         selection = TextRange(formatted.length)
                     )
                 },
-                label = { Text("생년월일 (YYYY-MM-DD)") },
-                leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = Color(0xFF4CAF50)) },
+                label = { Text("생년월일 (YYYY-MM-DD)", color = Color(0xFF666666)) },
+                leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = Color(0xFF4FD1A5)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(12.dp),
+                    .padding(vertical = 6.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Gray,
-                    unfocusedBorderColor = Color.LightGray
+                    focusedBorderColor = Color(0xFF4FD1A5),
+                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                    focusedLabelColor = Color(0xFF4FD1A5),
+                    cursorColor = Color(0xFF4FD1A5)
                 )
             )
 
@@ -124,27 +200,30 @@ fun SignUpExtraScreen(
                         selection = TextRange(formatted.length)
                     )
                 },
-                label = { Text("핸드폰 번호 (010-1234-5678)") },
-                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFF4CAF50)) },
+                label = { Text("핸드폰 번호 (010-1234-5678)", color = Color(0xFF666666)) },
+                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFF4FD1A5)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(12.dp),
+                    .padding(vertical = 6.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Gray,
-                    unfocusedBorderColor = Color.LightGray
+                    focusedBorderColor = Color(0xFF4FD1A5),
+                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                    focusedLabelColor = Color(0xFF4FD1A5),
+                    cursorColor = Color(0xFF4FD1A5)
                 )
             )
 
             // 성별 선택
             Text(
                 text = "성별 선택",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF2E2E2E),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp)
+                    .padding(top = 16.dp, bottom = 8.dp)
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -152,11 +231,11 @@ fun SignUpExtraScreen(
             ) {
                 genderOptions.forEach { gender ->
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (selectedGender == gender) Color(0xFF4FD1A5) else Color(0xFFE0E0E0),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selectedGender == gender) Color(0xFF4FD1A5) else Color(0xFFF5F5F5),
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp)
+                            .height(52.dp)
                             .clickable { selectedGender = gender }
                     ) {
                         Box(
@@ -167,7 +246,7 @@ fun SignUpExtraScreen(
                                 text = gender,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (selectedGender == gender) Color.White else Color.Black
+                                color = if (selectedGender == gender) Color.White else Color(0xFF666666)
                             )
                         }
                     }
@@ -177,19 +256,22 @@ fun SignUpExtraScreen(
             // 회원 유형 선택
             Text(
                 text = "회원 유형",
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
-                modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
+                color = Color(0xFF2E2E2E),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp, bottom = 8.dp)
             )
             Button(
                 onClick = { showRoleDialog = true },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (role.isNotBlank()) Color(0xFF4FD1A5) else Color(0xFFE0E0E0)
+                    containerColor = if (role.isNotBlank()) Color(0xFF4FD1A5) else Color(0xFFF5F5F5)
                 ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(52.dp)
             ) {
                 Text(
                     text = when(role) {
@@ -197,14 +279,15 @@ fun SignUpExtraScreen(
                         "guardian" -> "보호자"
                         else       -> "선택하기"
                     },
-                    color = if (role.isNotBlank()) Color.White else Color.Black
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (role.isNotBlank()) Color.White else Color(0xFF666666)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // 다음 버튼
-            // 3. 기존 Button의 onClick 부분을 이것으로 완전히 교체:
             Button(
                 onClick = {
                     when {
@@ -245,7 +328,7 @@ fun SignUpExtraScreen(
                                         throw Exception("토큰을 받지 못했습니다")
                                     }
 
-                                    // 🆕 3. STT 자동 활성화 시도
+                                    // 3. STT 자동 활성화 시도
                                     var sttActivationMessage = ""
                                     try {
                                         val sttRepository = STTRepository()
@@ -284,12 +367,14 @@ fun SignUpExtraScreen(
                     }
                 },
                 enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FD1A5)),
-                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4FD1A5),
+                    disabledContainerColor = Color(0xFF4FD1A5).copy(alpha = 0.6f)
+                ),
+                shape = RoundedCornerShape(20.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(top = 20.dp)
+                    .height(56.dp)
             ) {
                 if (isLoading) {
                     Row(
@@ -304,19 +389,23 @@ fun SignUpExtraScreen(
                         Text("처리 중...", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 } else {
-                    Text("가입 완료", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        "가입 완료",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
 
-// 4. 기존 에러 다이얼로그 아래에 성공 다이얼로그 추가:
-// 🆕 성공 다이얼로그
+            // 성공 다이얼로그
             if (showSuccessDialog) {
                 AlertDialog(
                     onDismissRequest = {},  // 버튼으로만 닫기
                     title = {
                         Text(
                             "가입 완료!",
-                            color = Color(0xFF4CAF50),
+                            color = Color(0xFF4FD1A5),
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -342,7 +431,7 @@ fun SignUpExtraScreen(
                                 }
                             }
                         ) {
-                            Text("확인", fontWeight = FontWeight.Bold)
+                            Text("확인", fontWeight = FontWeight.Bold, color = Color(0xFF4FD1A5))
                         }
                     }
                 )
@@ -354,19 +443,61 @@ fun SignUpExtraScreen(
     if (showRoleDialog) {
         AlertDialog(
             onDismissRequest = { showRoleDialog = false },
-            title = { Text("회원 유형을 선택해주세요") },
+            title = {
+                Text(
+                    "회원 유형을 선택해주세요",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2E2E2E)
+                )
+            },
             text = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    RoleOption("노약자", R.drawable.guardian, role == "ward") {
-                        role = "ward"
-                        showRoleDialog = false
-                    }
-                    RoleOption("보호자", R.drawable.ward, role == "guardian") {
-                        role = "guardian"
-                        showRoleDialog = false
+                Box {
+                    // 다이얼로그용 떠다니는 원들
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .background(
+                                Color(0x204FD1A5),
+                                CircleShape
+                            )
+                            .blur(12.dp)
+                            .align(Alignment.TopStart)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                Color(0x3061D6A8),
+                                CircleShape
+                            )
+                            .blur(8.dp)
+                            .align(Alignment.TopEnd)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .background(
+                                Color(0x154CAF50),
+                                CircleShape
+                            )
+                            .blur(10.dp)
+                            .align(Alignment.BottomCenter)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        RoleOption("노약자", R.drawable.guardian, role == "ward") {
+                            role = "ward"
+                            showRoleDialog = false
+                        }
+                        RoleOption("보호자", R.drawable.ward, role == "guardian") {
+                            role = "guardian"
+                            showRoleDialog = false
+                        }
                     }
                 }
             },
@@ -382,7 +513,7 @@ fun SignUpExtraScreen(
             text = { Text(errorMessage) },
             confirmButton = {
                 TextButton(onClick = { showErrorDialog = false }) {
-                    Text("확인")
+                    Text("확인", color = Color(0xFF4FD1A5))
                 }
             }
         )
@@ -403,8 +534,8 @@ private fun RoleOption(
             .clickable(onClick = onSelect)
     ) {
         Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = if (selected) Color(0xFF4FD1A5) else Color(0xFFE0E0E0),
+            shape = RoundedCornerShape(16.dp),
+            color = if (selected) Color(0xFF4FD1A5) else Color(0xFFF5F5F5),
             modifier = Modifier.size(80.dp)
         ) {
             Box(
@@ -420,13 +551,12 @@ private fun RoleOption(
                 )
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = label,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (selected) Color.White else Color.Black
+            color = if (selected) Color(0xFF4FD1A5) else Color(0xFF666666)
         )
     }
 }
-
