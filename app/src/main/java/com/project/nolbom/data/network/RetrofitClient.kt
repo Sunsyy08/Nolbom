@@ -18,6 +18,10 @@ object RetrofitClient {
     private const val BASE_URL = "http://$PC_IP:3000/"
     private const val STT_BASE_URL = "http://$PC_IP:8000/"
 
+    // 🆕 IP 주소 공유 함수 추가
+    fun getBaseUrl(): String = BASE_URL
+    fun getImageUrl(endpoint: String): String = "$BASE_URL$endpoint"
+
     init {
         println("🔍 네트워크 설정:")
         println("🔍 PC IP: $PC_IP")

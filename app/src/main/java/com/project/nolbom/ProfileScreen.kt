@@ -28,6 +28,7 @@ import coil.request.ImageRequest
 import com.project.nolbom.data.model.ProfileUserData
 import com.project.nolbom.data.repository.ProfileRepository
 import com.project.nolbom.data.local.TokenStore
+import com.project.nolbom.data.network.RetrofitClient
 
 @Composable
 fun ProfileScreen(
@@ -184,7 +185,7 @@ fun ProfileCard(profile: ProfileUserData) {
             // --- 프로필 이미지 (루트 A) ---
             if (isWard && !token.isNullOrBlank()) {
                 val request = ImageRequest.Builder(context)
-                    .data("http://127.0.0.1:3000/user/profile-image")
+                    .data(RetrofitClient.getImageUrl("user/profile-image"))
                     .addHeader("Authorization", "Bearer $token")
                     .crossfade(true)
                     .build()

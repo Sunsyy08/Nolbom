@@ -49,27 +49,32 @@ data class UserData(
 )
 
 class WebSocketManager(
-    private val serverUrl: String = "http://127.0.0.1:3000", // 맨 끝 슬래시 제거
+    // 🔧 RetrofitClient와 동일한 IP 사용
+    private val serverUrl: String = "http://192.168.75.60:3000",
     private val userId: String,
     private val userName: String
 ) {
     private var socket: Socket? = null
     private val gson = Gson()
     private val tag = "WebSocketManager"
+    private var isReconnecting = false
 
     // 현재 온라인 사용자 목록
     private val connectedUsers = mutableMapOf<String, UserLocationInfo>()
 
     fun getLocationUpdates(): Flow<List<UserLocationInfo>> = callbackFlow {
         try {
-            Log.d(tag, "서버 연결 시도: $serverUrl")
+            Log.d(tag, "🔌 서버 연결 시도: $serverUrl")
 
-            // Socket.IO 클라이언트 초기화
+            // Socket.IO 클라이언트 초기화 - 더 안정적인 설정
             val opts = IO.Options().apply {
-                timeout = 10000
+                timeout = 15000 // 타임아웃 증가
                 reconnection = true
-                reconnectionDelay = 1000
-                reconnectionAttempts = 5
+                reconnectionDelay = 2000 // 재연결 지연 시간 증가
+                reconnectionAttempts = 10 // 재연결 시도 횟수 증가
+                forceNew = true // 새 연결 강제
+                upgrade = true
+                rememberUpgrade = true
             }
 
             socket = IO.socket(serverUrl, opts)
@@ -77,8 +82,9 @@ class WebSocketManager(
             // 연결 성공
             socket?.on(Socket.EVENT_CONNECT) {
                 Log.d(tag, "✅ 서버 연결 성공")
+                isReconnecting = false
 
-                // 서버에 사용자 등록
+                // 서버에 사용자 등록 - 직접 객체로 전송
                 val joinData = JSONObject().apply {
                     put("userId", userId)
                     put("userName", userName)
@@ -89,12 +95,26 @@ class WebSocketManager(
 
             // 연결 실패
             socket?.on(Socket.EVENT_CONNECT_ERROR) { args ->
-                Log.e(tag, "❌ 연결 실패: ${args.contentToString()}")
+                val error = if (args.isNotEmpty()) args[0] else "Unknown error"
+                Log.e(tag, "❌ 연결 실패: $error")
+
+                // 재연결 시도
+                if (!isReconnecting) {
+                    isReconnecting = true
+                    Log.d(tag, "🔄 재연결 시도...")
+                }
             }
 
             // 연결 해제
             socket?.on(Socket.EVENT_DISCONNECT) { args ->
-                Log.d(tag, "🔴 연결 해제: ${args.contentToString()}")
+                val reason = if (args.isNotEmpty()) args[0] else "Unknown reason"
+                Log.d(tag, "🔴 연결 해제: $reason")
+
+                // 예상치 못한 연결 해제인 경우 재연결 시도
+                if (reason != "io client disconnect" && !isReconnecting) {
+                    isReconnecting = true
+                    Log.d(tag, "🔄 연결이 끊어져 재연결을 시도합니다...")
+                }
             }
 
             // 현재 온라인 사용자 목록 수신
@@ -122,7 +142,7 @@ class WebSocketManager(
                     trySend(userLocations)
 
                 } catch (e: Exception) {
-                    Log.e(tag, "사용자 목록 파싱 오류: ${e.message}")
+                    Log.e(tag, "❌ 사용자 목록 파싱 오류: ${e.message}")
                 }
             }
 
@@ -151,7 +171,7 @@ class WebSocketManager(
                     }
 
                 } catch (e: Exception) {
-                    Log.e(tag, "위치 업데이트 파싱 오류: ${e.message}")
+                    Log.e(tag, "❌ 위치 업데이트 파싱 오류: ${e.message}")
                 }
             }
 
@@ -165,7 +185,7 @@ class WebSocketManager(
                     requestUsersList()
 
                 } catch (e: Exception) {
-                    Log.e(tag, "사용자 접속 처리 오류: ${e.message}")
+                    Log.e(tag, "❌ 사용자 접속 처리 오류: ${e.message}")
                 }
             }
 
@@ -181,22 +201,23 @@ class WebSocketManager(
                     trySend(connectedUsers.values.toList())
 
                 } catch (e: Exception) {
-                    Log.e(tag, "사용자 해제 처리 오류: ${e.message}")
+                    Log.e(tag, "❌ 사용자 해제 처리 오류: ${e.message}")
                 }
             }
 
             // 서버 에러
             socket?.on("error") { args ->
-                Log.e(tag, "🚨 서버 에러: ${args.contentToString()}")
+                val error = if (args.isNotEmpty()) args[0] else "Unknown error"
+                Log.e(tag, "🚨 서버 에러: $error")
             }
 
             // 연결 시작
             socket?.connect()
 
         } catch (e: URISyntaxException) {
-            Log.e(tag, "잘못된 서버 URL: ${e.message}")
+            Log.e(tag, "❌ 잘못된 서버 URL: ${e.message}")
         } catch (e: Exception) {
-            Log.e(tag, "WebSocket 초기화 오류: ${e.message}")
+            Log.e(tag, "❌ WebSocket 초기화 오류: ${e.message}")
         }
 
         awaitClose {
@@ -206,27 +227,38 @@ class WebSocketManager(
 
     fun sendLocation(location: LatLng) {
         try {
+            if (!isConnected()) {
+                Log.w(tag, "⚠️ 연결되지 않음 - 위치 전송 실패")
+                return
+            }
+
             val locationData = JSONObject().apply {
                 put("userId", userId)
                 put("userName", userName)
                 put("latitude", location.latitude)
                 put("longitude", location.longitude)
+                put("timestamp", System.currentTimeMillis())
             }
 
-            socket?.emit("location", locationData)
+            socket?.emit("location", locationData) // 직접 객체로 전송
             Log.d(tag, "📤 위치 전송: ${location.latitude}, ${location.longitude}")
 
         } catch (e: Exception) {
-            Log.e(tag, "위치 전송 오류: ${e.message}")
+            Log.e(tag, "❌ 위치 전송 오류: ${e.message}")
         }
     }
 
     fun requestUsersList() {
         try {
+            if (!isConnected()) {
+                Log.w(tag, "⚠️ 연결되지 않음 - 사용자 목록 요청 실패")
+                return
+            }
+
             socket?.emit("getUsers")
             Log.d(tag, "📋 사용자 목록 요청")
         } catch (e: Exception) {
-            Log.e(tag, "사용자 목록 요청 오류: ${e.message}")
+            Log.e(tag, "❌ 사용자 목록 요청 오류: ${e.message}")
         }
     }
 
@@ -237,17 +269,28 @@ class WebSocketManager(
     fun disconnect() {
         try {
             Log.d(tag, "🔌 연결 해제 중...")
+            isReconnecting = false
             socket?.disconnect()
             socket?.off()
             socket = null
             connectedUsers.clear()
         } catch (e: Exception) {
-            Log.e(tag, "연결 해제 오류: ${e.message}")
+            Log.e(tag, "❌ 연결 해제 오류: ${e.message}")
         }
     }
 
     fun reconnect() {
         disconnect()
         // 잠시 후 재연결 시도는 Flow를 다시 구독하면 자동으로 실행됨
+    }
+
+    // 🆕 연결 상태 확인 메서드
+    fun getConnectionStatus(): String {
+        return when {
+            socket == null -> "초기화되지 않음"
+            socket?.connected() == true -> "연결됨"
+            isReconnecting -> "재연결 시도 중"
+            else -> "연결 해제됨"
+        }
     }
 }
