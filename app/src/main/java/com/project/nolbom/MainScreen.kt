@@ -64,6 +64,8 @@ import com.project.nolbom.data.model.UserProfile
 import com.project.nolbom.data.repository.UserRepository
 
 import android.util.Base64
+import coil.request.ImageRequest
+import com.project.nolbom.data.network.RetrofitClient
 
 
 // 전화 앱 실행을 위한 함수
@@ -121,7 +123,7 @@ fun MainScreen(
     val locationViewModel = remember {
         LocationViewModel(
             locationManager = locationManager,
-            serverUrl = "http://127.0.0.1:3000" // 실제 서버 IP로 변경
+            serverUrl = RetrofitClient.getWebSocketUrl()
         )
     }
     val locationState by locationViewModel.locationState.collectAsState()
@@ -176,6 +178,7 @@ fun MainScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .systemBarsPadding() // ← 이거 추가 (기존 padding 대신)
             .verticalScroll(scrollState)
             .padding(top = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -187,45 +190,6 @@ fun MainScreen(
                 color = Color(0xFF83E3BD)
             )
         }
-
-        // 🔥 STT 상태 헤더 추가
-        // 🔥 STT 상태 헤더 - 상태에 따른 색상과 메시지 개선
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = when {
-                    !uiState.userRegistered -> Color(0xFFFF9800) // 주황색 - 회원가입 필요
-                    !uiState.serverConnected -> Color(0xFFF44336) // 빨간색 - 서버 연결 안됨
-                    uiState.isSTTActive -> Color(0xFF4CAF50) // 초록색 - 활성화됨
-                    else -> Color(0xFF2196F3) // 파란색 - 비활성화됨
-                }
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "🎤 음성 응급 감지",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = when {
-                        !uiState.userRegistered -> "회원가입 후 자동 활성화됩니다"
-                        !uiState.serverConnected -> "서버 연결 중..."
-                        uiState.isSTTActive -> "실시간 감지 중 - 화면 꺼져도 작동"
-                        else -> "비활성화됨"
-                    },
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 12.sp
-                )
-            }
-        }
-
         // 🆕 백엔드 연결 상태 카드 추가
         if (!alertUiState.isConnectedToBackend) {
             Card(
@@ -610,6 +574,7 @@ fun MainScreen(
 
         // 하단 탭바 (기존 유지)
         BottomTabBar(
+            profileBitmap = uiState.profileBitmap,
             onPhoneClick = { openPhoneApp(context) },
             onTabSelected = { tab ->
                 when (tab) {
@@ -691,6 +656,7 @@ fun MainScreen(
             }
         )
     }
+    Spacer(modifier = Modifier.height(80.dp))
 }
 
 // 위치 연결 상태를 보여주는 카드
@@ -1032,10 +998,14 @@ fun ActionCard(title: String, icon: ImageVector, modifier: Modifier = Modifier) 
 @Composable
 fun BottomTabBar(
     modifier: Modifier = Modifier,
+    profileBitmap: Bitmap? = null, // ← 매개변수 추가
     onTabSelected: (TabItem) -> Unit = {},
     selectedTab: TabItem = TabItem.Home,
     onPhoneClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val token = TokenStore.getToken()
+
     val tabs = listOf(
         TabItem.Profile,
         TabItem.Call,
@@ -1063,6 +1033,9 @@ fun BottomTabBar(
                 TabIcon(
                     tab = tab,
                     isSelected = tab == selectedTab,
+                    profileBitmap = profileBitmap, // ← 프로필 이미지 전달
+                    context = context,
+                    token = token,
                     onClick = {
                         if (tab == TabItem.Call) {
                             onPhoneClick()
@@ -1076,25 +1049,66 @@ fun BottomTabBar(
     }
 }
 
-sealed class TabItem(val title: String, val icon: @Composable () -> Unit) {
-    object Profile : TabItem("프로필", {
-        Image(
-            painter = painterResource(id = R.drawable.profile),
-            contentDescription = "프로필",
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(16.dp)),
-            contentScale = ContentScale.Crop
-        )
+sealed class TabItem(val title: String, val icon: @Composable (Bitmap?, Context, String?) -> Unit) {
+    object Profile : TabItem("프로필", { profileBitmap, context, token ->
+        // 🔧 실제 프로필 이미지 로직 적용
+        if (profileBitmap != null) {
+            Image(
+                bitmap = profileBitmap.asImageBitmap(),
+                contentDescription = "프로필 이미지",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else if (!token.isNullOrBlank()) {
+            // API에서 이미지 로드
+            val request = ImageRequest.Builder(context)
+                .data(RetrofitClient.getImageUrl("user/profile-image"))
+                .addHeader("Authorization", "Bearer $token")
+                .crossfade(true)
+                .build()
+            AsyncImage(
+                model = request,
+                contentDescription = "프로필 이미지",
+                modifier = Modifier.size(32.dp).clip(CircleShape)
+            )
+        } else {
+            // 기본 이미지
+            Image(
+                painter = painterResource(id = R.drawable.profile),
+                contentDescription = "프로필",
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        }
     })
-    object Call : TabItem("전화", { Icon(Icons.Default.Call, contentDescription = "전화") })
-    object Home : TabItem("홈", { Icon(Icons.Default.Home, contentDescription = "홈") })
-    object Chat : TabItem("채팅", { Icon(Icons.Default.Person, contentDescription = "채팅") })
-    object Settings : TabItem("설정", { Icon(Icons.Default.Settings, contentDescription = "설정") })
+
+    object Call : TabItem("전화", { _, _, _ ->
+        Icon(Icons.Default.Call, contentDescription = "전화")
+    })
+    object Home : TabItem("홈", { _, _, _ ->
+        Icon(Icons.Default.Home, contentDescription = "홈")
+    })
+    object Chat : TabItem("채팅", { _, _, _ ->
+        Icon(Icons.Default.Person, contentDescription = "채팅")
+    })
+    object Settings : TabItem("설정", { _, _, _ ->
+        Icon(Icons.Default.Settings, contentDescription = "설정")
+    })
 }
 
 @Composable
-fun TabIcon(tab: TabItem, isSelected: Boolean, onClick: () -> Unit) {
+fun TabIcon(
+    tab: TabItem,
+    isSelected: Boolean,
+    profileBitmap: Bitmap? = null,
+    context: Context,
+    token: String?,
+    onClick: () -> Unit
+) {
     val tintColor = if (isSelected) Color(0xFFFFFFFF) else Color.Gray
 
     Column(
@@ -1106,7 +1120,7 @@ fun TabIcon(tab: TabItem, isSelected: Boolean, onClick: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         CompositionLocalProvider(LocalContentColor provides tintColor) {
-            tab.icon()
+            tab.icon(profileBitmap, context, token) // ← 매개변수 전달
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(

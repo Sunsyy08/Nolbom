@@ -22,6 +22,9 @@ object RetrofitClient {
     fun getBaseUrl(): String = BASE_URL
     fun getImageUrl(endpoint: String): String = "$BASE_URL$endpoint"
 
+    // 🆕 WebSocket용 URL 제공 함수 추가
+    fun getWebSocketUrl(): String = "http://$PC_IP:3000"
+
     init {
         println("🔍 네트워크 설정:")
         println("🔍 PC IP: $PC_IP")
