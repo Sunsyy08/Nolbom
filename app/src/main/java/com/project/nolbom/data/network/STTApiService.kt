@@ -1,4 +1,30 @@
-// data/network/STTApiService.kt - 새로 추가
+/**
+ * 파일명: STTApiService.kt
+ * 위치: data/network/
+ *
+ * 설명:
+ *  - Retrofit 인터페이스 정의 파일
+ *  - Combined Server (Python 기반 STT 서버)와의 HTTP 통신 관리
+ *  - STT 활성화, 상태 조회, 음성 인식, 긴급 알림, 키워드 조회 등
+ *
+ * 주요 엔드포인트:
+ *  - POST /stt/activate → STT 활성화 요청
+ *  - GET  /stt/status   → STT 상태 조회
+ *  - GET  /health       → 서버 상태 조회
+ *  - GET  /detections   → 감지 이벤트 조회
+ *  - POST /emergency/manual → 긴급 SMS 전송
+ *  - POST /voice/recognize  → 음성 인식
+ *  - POST /voice/continuous → 연속 음성 인식
+ *  - POST /sms/test        → 테스트 SMS 전송
+ *  - GET  /config/keywords → 키워드 목록 조회
+ *  - GET  /health           → 모니터링 상태 조회 (임시)
+ *
+ * 주의:
+ *  - 모든 요청은 Authorization 헤더 (JWT 토큰) 필요
+ *  - 일부 엔드포인트는 Combined Server 상황에 따라 변경될 수 있음
+ *  - 연속 음성 인식 및 모니터링 상태는 향후 서버 기능 확장에 따라 수정 예정
+ */
+
 package com.project.nolbom.data.network
 
 import com.project.nolbom.data.model.ActiveUsersResponse

@@ -1,4 +1,25 @@
-// data/network/RetrofitClient.kt - 올바른 IP 설정
+/**
+ * 파일명: RetrofitClient.kt
+ * 위치: data/network/
+ *
+ * 설명:
+ *  - Retrofit 기반 네트워크 클라이언트 모듈
+ *  - Node.js 서버, Python STT 서버, WebSocket 연결 등을 위한 URL/클라이언트 제공
+ *  - 프로젝트 내 모든 API 호출에 공통적으로 사용
+ *
+ * 주요 기능:
+ *  1) BASE_URL, STT_BASE_URL 등 서버 IP/포트 관리
+ *  2) getBaseUrl(), getImageUrl(), getWebSocketUrl() 등 URL 제공 함수
+ *  3) OkHttpClient + HttpLoggingInterceptor 설정
+ *  4) MoshiConverterFactory를 적용한 Retrofit 객체 생성
+ *  5) ApiService, STTApiService, MissingPersonsApi 객체 제공
+ *  6) 실종자 API 연결 테스트 함수 (testMissingPersonsConnection)
+ *
+ * 주의:
+ *  - PC_IP는 주기적으로 변경될 수 있으므로 실제 사용 환경에 맞춰 수정 필요
+ *  - TokenStore에서 JWT 토큰 제공 가능 (필요 시 Interceptor 추가 가능)
+ *  - Retrofit 객체는 Lazy 또는 싱글톤 패턴으로 재사용 권장
+ */
 package com.project.nolbom.data.network
 
 import com.project.nolbom.data.local.TokenStore

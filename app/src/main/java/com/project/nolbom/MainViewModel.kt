@@ -1,4 +1,50 @@
-// MainViewModel.kt - 자동 STT 활성화 개선 버전
+/**
+ * 파일명: MainViewModel.kt
+ * 위치: (프로젝트 루트)
+ *
+ * 설명:
+ *  - 앱의 메인 ViewModel로 사용자 프로필 관리 + STT(음성 인식) 상태 제어 담당
+ *  - Jetpack Compose UI와 연결되는 상태(StateFlow) 관리
+ *  - 회원가입 → STT 자동 활성화 → 실시간 음성 감지 서비스 실행까지 전체 흐름 제어
+ *
+ * 주요 기능:
+ *  1) 사용자 프로필 관리
+ *      - loadUserProfile(): 로컬/서버에서 프로필 데이터 로드
+ *      - clearUserData(), saveTestData(), logUserData(): 사용자 데이터 관리
+ *
+ *  2) STT 사용자 정보 관리
+ *      - loadSTTUserInfo(): TokenStore에서 사용자 정보 불러오기
+ *      - registerUser(): 회원가입 처리 및 자동 STT 활성화
+ *      - activateSTTIfNeeded(): 앱 시작 시 STT 상태 자동 복원
+ *
+ *  3) STT 제어
+ *      - activateSTTAndStartService(): 수동 STT 활성화 및 RealtimeVoiceService 시작
+ *      - deactivateSTT(): STT 비활성화 및 서비스 중지
+ *      - autoActivateSTTAfterSignup(): 회원가입 직후 STT 자동 활성화
+ *
+ *  4) 권한 처리
+ *      - needsPermissionRequest(), getRequiredPermissions(): 권한 확인 및 요청 준비
+ *      - onPermissionsGranted(): 권한 허용/거부 처리
+ *      - hasRequiredPermissions(): 실행 전 권한 체크
+ *
+ *  5) 음성 관련 기능
+ *      - initVoiceRecorder(), testMicrophone(): 마이크 상태 확인
+ *      - startVoiceRecognition(): 짧은 음성 녹음 후 서버에 STT 요청
+ *      - startRealtimeVoiceService(), stopRealtimeVoiceService(): 실시간 음성 감지 서비스 제어
+ *
+ *  6) 응급 호출
+ *      - sendManualEmergency(): STT 키워드 없이도 수동으로 응급 SMS 전송
+ *
+ *  7) UI 메시지 관리
+ *      - addMessage(): UI 로그 메시지 기록 (최대 50개 유지)
+ *      - clearMessages(): 로그 초기화
+ *
+ * 주의:
+ *  - RECORD_AUDIO, POST_NOTIFICATIONS(Android 13+), FOREGROUND_SERVICE_MICROPHONE(Android 14+) 권한 필요
+ *  - STT 서버와의 통신 실패 시 UI에 오류 메시지 표시됨
+ *  - RealtimeVoiceService는 ForegroundService이므로 AndroidManifest에 서비스 등록 필수
+ */
+
 package com.project.nolbom
 
 import androidx.lifecycle.ViewModel

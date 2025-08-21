@@ -1,4 +1,30 @@
 // data/local/TokenStore.kt - 기존 코드 + STT 자동 활성화 기능 추가
+/**
+ * 파일명: TokenStore.kt
+ * 위치: data/local/
+ *
+ * 설명:
+ *  - SharedPreferences 를 활용해 JWT 토큰, 사용자 정보, 로그인 상태를 관리하는 유틸리티 객체
+ *  - 앱 내 전역에서 호출 가능하도록 object 로 구현됨
+ *
+ * 주요 기능:
+ *  - JWT 토큰 저장/조회/삭제
+ *  - 사용자 기본 정보(userId, userName, phone, email) 저장 및 관리
+ *  - 로그인 상태 관리
+ *  - 위치 추적용 고유 ID 자동 생성
+ *
+ * 추가된 기능 (STT 자동 활성화 관련):
+ *  - STT 활성화 상태 저장 및 조회
+ *  - STT 자동 시작 여부 저장/조회
+ *  - 마지막 STT 활성화 시간 기록
+ *  - 앱 비정상 종료 시 STT 상태 복원 여부 판단
+ *  - STT 상태 로그 출력 기능
+ *  - STT 관련 상태 초기화 및 사용자 데이터 초기화
+ *
+ * 주의:
+ *  - prefs 초기화 전에 호출하지 않도록 반드시 init(context) 호출 필요
+ *  - 민감한 데이터(토큰, 사용자 정보)는 SharedPreferences 에 저장되므로 보안에 주의
+ */
 package com.project.nolbom.data.local
 
 import android.content.Context

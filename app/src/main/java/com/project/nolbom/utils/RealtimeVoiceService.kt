@@ -1,4 +1,28 @@
-// utils/RealtimeVoiceService.kt - 에러 수정 버전
+/**
+ * 파일명: RealtimeVoiceService.kt
+ * 위치: utils/
+ *
+ * 설명:
+ *  - 안드로이드 Foreground Service 기반 실시간 음성 감지 서비스
+ *  - 마이크 입력을 감지하여 음성 세그먼트 추출
+ *  - STTRepository를 통해 음성 데이터를 서버로 전송하고 인식 결과 처리
+ *  - 응급 키워드 감지 시 알림 발송
+ *
+ * 주요 기능:
+ *  1) AudioRecord를 사용한 실시간 음성 녹음
+ *  2) 음성 세그먼트 감지 (음성 임계값 + 침묵 시간 기준)
+ *  3) 음성 데이터를 Base64로 변환 후 서버 전송
+ *  4) 서버 응답 기반 키워드 감지 및 알림
+ *  5) Foreground Service + Notification + WakeLock으로 백그라운드 안정성 확보
+ *  6) 권한 체크: RECORD_AUDIO, POST_NOTIFICATIONS, FOREGROUND_SERVICE_MICROPHONE
+ *
+ * 주의:
+ *  - SAMPLE_RATE, VOICE_THRESHOLD, SILENCE_DURATION 등 상수는 환경에 맞게 조정 필요
+ *  - Android 13 이상에서는 POST_NOTIFICATIONS 권한 필요
+ *  - 서비스 중지 시 stopCurrentRecording(), stopVoiceMonitoring() 호출 필수
+ *  - 서버 연결 실패 시 예외 처리 필요
+ */
+
 package com.project.nolbom.utils
 
 import android.app.Notification

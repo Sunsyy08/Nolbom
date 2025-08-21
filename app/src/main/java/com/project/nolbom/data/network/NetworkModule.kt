@@ -1,3 +1,35 @@
+/**
+ * 파일명: NetworkModule.kt
+ * 위치: data/network/
+ *
+ * 설명:
+ *  - Retrofit 기반 네트워크 모듈 정의 객체 (object)
+ *  - Kakao REST API 호출을 위한 공통 설정을 관리
+ *
+ * 주요 구성 요소:
+ *  1) authInterceptor
+ *     - 모든 요청에 "Authorization" 헤더 추가
+ *     - 헤더 값: KakaoAK + BuildConfig.KAKAO_REST_API_KEY
+ *
+ *  2) OkHttpClient
+ *     - authInterceptor 등록하여 인증 헤더 자동 부착
+ *
+ *  3) Moshi
+ *     - KotlinJsonAdapterFactory 적용하여 JSON 직렬화/역직렬화 지원
+ *
+ *  4) Retrofit
+ *     - Base URL: https://dapi.kakao.com/
+ *     - MoshiConverterFactory 적용
+ *     - OkHttpClient 연결
+ *
+ *  5) API 서비스 객체
+ *     - KakaoApiService 구현체 생성 및 외부에서 사용 가능하도록 제공
+ *
+ * 주의:
+ *  - BuildConfig.KAKAO_REST_API_KEY는 local.properties → gradle을 통해 주입된 값 사용
+ *  - Authorization 헤더 자동 추가되므로 별도 설정 불필요
+ */
+
 package com.project.nolbom.data.network
 
 import com.project.nolbom.BuildConfig

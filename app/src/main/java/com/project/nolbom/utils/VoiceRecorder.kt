@@ -1,4 +1,38 @@
-// utils/VoiceRecorder.kt - testMicrophone 함수 추가
+/**
+ * 파일명: VoiceRecorder.kt
+ * 위치: utils/
+ *
+ * 설명:
+ *  - Android AudioRecord 기반 음성 녹음/테스트 유틸 클래스
+ *  - Jetpack Compose 등 앱 전반에서 마이크 입력 확인 및 음성 데이터 수집 가능
+ *  - 단발성/연속 녹음 지원 및 Base64 인코딩 제공
+ *
+ * 주요 기능:
+ *  1) hasRecordPermission():
+ *      - RECORD_AUDIO 권한 상태 확인
+ *
+ *  2) testMicrophone():
+ *      - 1초간 마이크 테스트 후 평균/최대 음성 레벨 측정
+ *      - 마이크 정상 동작 여부 판별 (없음/약함/정상)
+ *
+ *  3) recordShortAudio():
+ *      - 지정 시간(ms) 동안 짧게 음성 녹음
+ *      - Base64 문자열로 반환
+ *
+ *  4) startContinuousRecording(onAudioChunk, chunkDurationMs):
+ *      - 일정 시간 단위로 음성 청크 녹음 및 콜백 전달
+ *      - 실시간 스트리밍/서버 전송에 활용 가능
+ *
+ *  5) stopRecording(), release():
+ *      - 녹음 중지 및 리소스 해제
+ *
+ * 주의:
+ *  - AndroidManifest.xml에 RECORD_AUDIO 권한 선언 필수
+ *  - Android 6.0 이상에서 런타임 권한 요청 필요
+ *  - 마이크 감도(Amplitude)에 따라 환경 소음에 영향을 받을 수 있음
+ *  - Base64 인코딩 데이터는 용량이 크므로 전송 시 주의 필요
+ */
+
 package com.project.nolbom.utils
 
 import android.Manifest
