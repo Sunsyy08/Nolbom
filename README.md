@@ -6,6 +6,9 @@
 * 사용 기술 : Kotlin, Compose, node.js, express, sqlite3, Retrofit2, ViewModel, Google Map, Kakao Map
 
 '놀봄이'는 노인 안전과 실종 방지를 목적으로 한 AI 기반 스마트 케어 시스템입니다. GPS, AI 얼굴 인식, 음성 인식, 지도 API 등 다양한 최신 기술을 활용하여, 노인이 안전하게 생활할 수 있도록 보호자에게 실시간 알림과 위치 정보를 제공합니다.
+
+<img width="466" height="1003" alt="Image" src="https://github.com/user-attachments/assets/03c96867-2bae-4f4b-b1a3-e7a34353c9e0" />
+
 ## 구현 기능
 * 회원가입
   * 유형 선택으로 노약자, 보호자 둘 중에 선택
